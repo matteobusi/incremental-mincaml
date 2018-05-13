@@ -1,7 +1,3 @@
-(*
-  Hello World
-*)
-
 open Annotast
 open Typing
 
@@ -9,44 +5,37 @@ open Typing
    Prove di annotazioni
  *)
 
-type hash_annot = H of int
-let string_of_hash (H(n)) = string_of_int n
-let string_of_hashtype (H(n),t) = Printf.sprintf "%d - %s" n (Type.string_of_type t)
+(* type hash_annot = H of int
+ * let string_of_hash (H(n)) = string_of_int n
+ * let string_of_hashtype (H(n),t) = Printf.sprintf "%d - %s" n (Type.string_of_type t) *)
 
-
-let  letExpr1 =  Let(("z", Type.Int), Int(17,H(0)),
-                     Add(
-                         Let(("z", Type.Int), Int(22,H(1)),
-                             Add(Int(100,H(3)), Var("z",H(4)), H(5)),H(6)),
-                       Var("z",H(6)),H(7)),H(8))
-
-let tupleExpr1 = Tuple([Int(1, H(0)); Int(2,H(1)); Int(3,H(2))], H(3))
-
-let letTuple1 =  LetTuple(["ciao", Type.Int; "casa", Type.Bool],
-                          Tuple([Int(10,H(0)); Bool(true, H(1))], H(2)),
-                          (Int(1,H(3))),H(4))
-
-
-
-let exprs = [letExpr1; tupleExpr1 ; letTuple1]
-
+let external_signatures = [
+    "print_int" , Type.Fun([Type.Int], Type.Unit) ;
+    "print_newline" , Type.Fun([Type.Unit], Type.Unit) ;
+  ]
 
 (*
-let  letExpr1 =  Let(("z", Type.Int), Int 17,
-                     Add(
-                         Let(("z", Type.Int), Int 22,
-                             Add(Int 100, Var "z")),
-                         Var("z")))
-
-
-let _ =  Printf.printf "Hello there:\n %s\n" (Syntax.string_of_syntax letExpr1);
-         print_string (Type.string_of_type (Typing.f letExpr1));
-         print_newline ()
+let string_of_type (_,t) = Printf.sprintf "%s" (Type.string_of_type t)
  *)
-let _ = List.iter (fun e -> print_string (Annotast.string_of_annotast string_of_hashtype  e); print_newline ()) (List.map Typing.f exprs)
-(*
-  let print_expr = Syntax.syntax_ppf Format.std_formatter in
-  List.iter (fun e -> print_expr e; print_newline ()) exprs
+let string_of_type ppf (_,t) = Type.type_ppf ppf t
 
-Printf.printf "Hello there:\n %s\n" (Syntax.string_of_syntax letExpr1);
-*)
+let analyzeExpr (file : string) =
+  Printf.printf "Analyzing: %s ...\n" file;
+  let channel = open_in file in
+  let lexbuf = Lexing.from_channel channel in
+  let e = Parser.exp Lexer.token lexbuf in
+  try
+    let te = Typing.f e in
+    print_string (Annotast.string_of_annotast string_of_type te);
+    print_string "\n\n"
+  with Typing.TypeError _ ->
+        print_string (Annotast.string_of_annotast (fun _ _ -> ()) e);
+        print_newline ()
+
+
+let _ =
+  Typing.extenv := M.add_list external_signatures M.empty;
+  if Array.length Sys.argv > 1 then
+    Array.iteri (fun i exp -> if i > 0 then analyzeExpr exp else ()) Sys.argv
+  else
+    Printf.eprintf "Usage:\n %s file1.ml file2.ml ... fileN.ml\n" Sys.argv.(0)
