@@ -95,7 +95,7 @@ let rec g env e = (* *)
        let te3 = g env e3 in
        let t = extract_type te2 in
        check t (extract_type te3);
-       If(te1, te2, te2, (annot, t))
+       If(te1, te2, te3, (annot, t))
     | Let(x, e1, e2, annot) ->
        let te1 = g env e1 in
        (* check  t (extract_type te1); *)
