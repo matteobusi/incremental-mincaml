@@ -55,6 +55,30 @@ and string_of_fundef (string_of_payload : 'a -> string) ({name = (id,t); args=fo
   Printf.sprintf "FunVal((%s : %s),(%s),%s)" id (Type.string_of_type t) (String.concat " " bindings) (string_of_annotast string_of_payload e)
  *)
 
+let get_annot e =
+  match e with
+  | Unit(annot)
+  | Bool(_, annot)
+  | Int(_, annot)
+  | Float(_, annot)
+  | Not(_, annot)
+  | Var(_, annot)
+  | Neg(_, annot)
+  | FNeg(_, annot)
+  | IBop(_,_,_, annot)
+  | FBop(_,_,_, annot)
+  | Rel(_,_,_, annot)
+  | If(_,_,_, annot)
+  | Let(_,_,_, annot)
+  | LetRec(_,_, annot)
+  | App(_,_, annot)
+  | Tuple(_, annot)
+  | LetTuple(_,_,_, annot)
+  | Array(_,_, annot)
+  | Get(_,_, annot)
+  | Put(_, _,_, annot)      -> annot
+
+
 let rec ppf_annotast  ppf_payload ppf (e : 'a t) =
   let ppf_tree = ppf_annotast ppf_payload in
   match e with

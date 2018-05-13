@@ -17,7 +17,7 @@ let external_signatures = [
 (*
 let string_of_type (_,t) = Printf.sprintf "%s" (Type.string_of_type t)
  *)
-let string_of_type ppf (_,t) = Type.type_ppf ppf t
+let string_of_type ppf (h,t) = Format.fprintf ppf "@[<2>%d - %a@]" h Type.type_ppf t
 
 let analyzeExpr (file : string) =
   Printf.printf "Analyzing: %s ...\n" file;

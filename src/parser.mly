@@ -2,7 +2,17 @@
 (* parser *)
 (* From https://github.com/esumii/min-caml *)
 open Annotast
+open Hashing
 
+let get_hash (e : int Annotast.t) =
+  Annotast.get_annot e
+
+let hash_of_fundef ({name=(id,rt); args=xs; body=e}) =
+    let hash_id = compute_hash id in
+    let hash_tr = compute_hash rt in
+    let hash_args = combine_hashes (List.map (fun (id, t) ->
+    		    		    combine_hashes [compute_hash id; compute_hash t]) xs) in
+    combine_hashes [hash_id ; hash_tr; hash_args; get_hash e]
 %}
 
 /* (* Token definition *) */
@@ -67,7 +77,7 @@ open Annotast
 
 
 /* (* Start symbol *) */
-%type <unit Annotast.t> exp
+%type <int Annotast.t> exp
 %start exp
 
 %%
@@ -76,82 +86,172 @@ simple_exp: /* (* simple expressions *) */
 | LPAREN exp RPAREN
     { $2 }
 | LPAREN RPAREN
-    { Unit () }
+    { Unit (compute_hash "unit") }
 | BOOL
-    { Bool($1, ()) }
+    { Bool($1, compute_hash $1) }
 | INT
-    { Int($1, ()) }
+    { Int($1, compute_hash $1) }
 | FLOAT
-    { Float($1, ()) }
+    { Float($1, compute_hash $1) }
 | IDENT
-    { Var($1, ()) }
+    { Var($1, compute_hash $1) }
 | simple_exp DOT LPAREN exp RPAREN
-    { Get($1, $4, ()) }
+    {
+     let hs =  [compute_hash "get";
+                get_hash $1 ;
+		get_hash $4 ] in
+       Get($1, $4, (combine_hashes hs))
+     }
 
 exp: /* (* Expressions *) */
 | simple_exp
     { $1 }
 | NOT exp
     %prec prec_app
-    { Not($2, () ) }
+    { Not($2, combine_hashes [compute_hash "not"; get_hash $2] ) }
 | MINUS exp
     %prec prec_unary_minus
     { match $2 with
-    | Float(f, _) -> Float(-.f, ()) (* -1.23 *)
-    | e -> Neg(e, ()) }
+    | Float(f, _) -> Float(-.f, compute_hash (-.f)) (* -1.23 *)
+    | e -> Neg(e, combine_hashes [compute_hash "neg"; get_hash e]) }
 | exp PLUS exp /* (* Arithmetic operations on integers *) */
-    { IBop("+", $1, $3, ()) }
+    {
+      let hs = [compute_hash "+";
+                get_hash $1 ;
+		get_hash $3 ] in
+        IBop("+", $1, $3, combine_hashes hs)
+    }
 | exp MINUS exp
-    { IBop("-", $1, $3, ()) }
+    {
+      let hs = [compute_hash "-";
+                get_hash $1 ;
+		get_hash $3 ] in
+        IBop("-", $1, $3, combine_hashes hs)
+    }
 | exp AST exp
-    { IBop("*", $1, $3, ()) }
+    {
+      let hs = [compute_hash "*";
+                get_hash $1 ;
+		get_hash $3 ] in
+        IBop("*", $1, $3, combine_hashes hs)
+    }
 | exp EQUAL exp     /* (* Relational operators *) */
-    { Rel("=",$1, $3, ()) }
+    {
+     let hs = [compute_hash "=";
+                get_hash $1 ;
+		get_hash $3 ] in
+       Rel("=",$1, $3, combine_hashes hs)
+    }
 | exp LESS_GREATER exp
-    { Not(Rel("=", $1, $3, ()), ()) }
+    {
+     let hs = combine_hashes [compute_hash "=";
+                               get_hash $1 ;
+		               get_hash $3 ] in
+       Not(Rel("=", $1, $3, hs), combine_hashes [compute_hash "="; hs])
+     }
 | exp LESS exp
-    { Rel("<", $3, $1, ()) }
+    {
+     let hs = [compute_hash "<";
+                get_hash $1 ;
+		get_hash $3 ] in
+       Rel("<", $3, $1, combine_hashes hs)
+    }
 | exp GREATER exp
-    { Rel(">", $1, $3, ()) }
+    {
+      let hs = [compute_hash ">";
+                get_hash $1 ;
+		get_hash $3 ] in
+      Rel(">", $1, $3, combine_hashes hs)
+    }
 | exp LESS_EQUAL exp
-    { Rel("<=", $1, $3, ()) }
+    {
+     let hs = [compute_hash "<=";
+                get_hash $1 ;
+		get_hash $3 ] in
+       Rel("<=", $1, $3, combine_hashes hs)
+    }
 | exp GREATER_EQUAL exp
-    { Rel(">=", $3, $1, ()) }
+    {
+     let hs = [compute_hash ">=";
+                get_hash $1 ;
+		get_hash $3 ] in
+       Rel(">=", $3, $1, combine_hashes hs)
+    }
 | IF exp THEN exp ELSE exp
     %prec prec_if
-    { If($2, $4, $6, ()) }
+    {
+     let hs = [compute_hash "ifthen";
+                get_hash $2 ;
+		get_hash $4 ;
+		get_hash $6] in
+       If($2, $4, $6, combine_hashes hs)
+    }
 | MINUS_DOT exp
     %prec prec_unary_minus
-    { FNeg($2, ()) }
+    { FNeg($2, combine_hashes [compute_hash "fneg"; get_hash $2]) }
 | exp PLUS_DOT exp
-    { FBop("+.",$1, $3, ()) }
+    {
+     let hs = [compute_hash "+.";
+                get_hash $1 ;
+		get_hash $3 ] in
+      FBop("+.",$1, $3, combine_hashes hs)
+    }
 | exp MINUS_DOT exp
-    { FBop("-.",$1, $3, ()) }
+    {
+      let hs = [compute_hash "-.";
+                get_hash $1 ;
+		get_hash $3 ] in
+      FBop("-.",$1, $3, combine_hashes hs)
+    }
 | exp AST_DOT exp
-    { FBop("*.",$1, $3, ()) }
+    {
+      let hs = [compute_hash "*.";
+                get_hash $1 ;
+		get_hash $3 ] in
+      FBop("*.",$1, $3, combine_hashes hs)
+    }
 | exp SLASH_DOT exp
-    { FBop("/.",$1, $3, ()) }
+    {
+     let hs = [compute_hash "/.";
+                get_hash $1 ;
+		get_hash $3 ] in
+     FBop("/.",$1, $3, combine_hashes hs)
+    }
 | LET IDENT EQUAL exp IN exp
     %prec prec_let
-    { Let($2, $4, $6, ()) }
+    { Let($2, $4, $6, combine_hashes [compute_hash "let"; compute_hash $2; get_hash $4; get_hash $6]) }
 | LET REC fundef IN exp
     %prec prec_let
-    { LetRec($3, $5, ()) }
+    { LetRec($3, $5, combine_hashes [compute_hash "lrec"; hash_of_fundef $3; get_hash $5]) }
 | simple_exp actual_args
     %prec prec_app
-    { App($1, $2, ()) }
+    {
+      let hargs = List.map get_hash $2 in
+      App($1, $2, combine_hashes ([compute_hash "app" ; get_hash $1] @ hargs))
+    }
 | elems
     %prec prec_tuple
-    { Tuple($1, ()) }
+    { Tuple($1, combine_hashes ((compute_hash "tuple")::(List.map get_hash $1))) }
 | LET LPAREN pat RPAREN EQUAL exp IN exp
-    { LetTuple($3, $6, $8, ()) }
+    {
+      let identHash = List.map compute_hash $3 in
+      let hs = (compute_hash "ltup") :: (get_hash $6) :: (get_hash $8) :: identHash in
+      LetTuple($3, $6, $8, combine_hashes hs)
+    }
 | simple_exp DOT LPAREN exp RPAREN LESS_MINUS exp
-    { Put($1, $4, $7, ()) }
+    { Put($1, $4, $7, combine_hashes [compute_hash "put"; get_hash $1; get_hash $4; get_hash $7]) }
 | exp SEMICOLON exp
-    { Let((Id.gentmp Type.Unit), $1, $3, ()) }
+    {
+        let nid =  Id.gentmp Type.Unit in
+        let hs = [compute_hash "let;";
+	          compute_hash nid;
+                  get_hash $1 ;
+		  get_hash $3 ] in
+        Let(nid, $1, $3, combine_hashes hs)
+    }
 | ARRAY_CREATE simple_exp simple_exp
     %prec prec_app
-    { Array($2, $3, ()) }
+    { Array($2, $3, combine_hashes [compute_hash "mkar"; get_hash $3; get_hash $3 ]) }
 | error
     { failwith
         (Printf.sprintf "parse error near characters %d-%d"
