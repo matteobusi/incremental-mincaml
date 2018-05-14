@@ -10,8 +10,15 @@ open Typing
  * let string_of_hashtype (H(n),t) = Printf.sprintf "%d - %s" n (Type.string_of_type t) *)
 
 let external_signatures = [
-    "print_int" , Type.Fun([Type.Int], Type.Unit) ;
+    "print_int" ,     Type.Fun([Type.Int], Type.Unit) ;
     "print_newline" , Type.Fun([Type.Unit], Type.Unit) ;
+    "int_of_float",   Type.Fun([Type.Float], Type.Int) ;
+    "float_of_int",   Type.Fun([Type.Int], Type.Float) ;
+    "sin",            Type.Fun([Type.Float], Type.Float) ;
+    "cos",            Type.Fun([Type.Float], Type.Float) ;
+    "sqrt",           Type.Fun([Type.Float], Type.Float) ;
+    "abs_float",      Type.Fun([Type.Float], Type.Float) ;
+    "truncate",       Type.Fun([Type.Float], Type.Int);
   ]
 
 (*
