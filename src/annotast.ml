@@ -1,6 +1,4 @@
 (* Annotated Abstract Syntax Tree *)
-
-
 type 'a t = (* MinCaml *)
   | Unit of 'a
   | Bool of bool * 'a
