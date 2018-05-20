@@ -1,5 +1,6 @@
 open Annotast
 open Typing
+open Cache.Cache
 
 (*
    Prove di annotazioni
@@ -33,8 +34,11 @@ let analyzeExpr (file : string) =
   let e = Parser.exp Lexer.token lexbuf in
   try
     let te = Typing.f e in
-    print_string (Annotast.string_of_annotast string_of_type te);
-    print_string "\n\n"
+      let cache = Cache.buildCache te M.empty in 
+        print_string (Annotast.string_of_annotast string_of_type te);
+        print_string "\n=============================\n";
+        Cache.print_cache cache;
+        print_string "=============================\n\n"
   with Typing.TypeError _ ->
         print_string (Annotast.string_of_annotast (fun _ _ -> ()) e);
         print_newline ()

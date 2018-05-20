@@ -77,7 +77,7 @@ let get_annot e =
   | Put(_, _,_, annot)      -> annot
 
 
-let rec ppf_annotast  ppf_payload ppf (e : 'a t) =
+let rec ppf_annotast ppf_payload ppf (e : 'a t) =
   let ppf_tree = ppf_annotast ppf_payload in
   match e with
   | Unit(annot)            	-> Format.fprintf ppf "@[<2>Unit{%a}@]" ppf_payload annot
