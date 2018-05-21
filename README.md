@@ -1,5 +1,5 @@
 # README - Incremental Analysis
-================================
+
 
 This project is a proof of concept in a very early stages (see below
 for TODOs and known issues) implementing the incremental approach
