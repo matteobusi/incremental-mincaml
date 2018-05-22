@@ -29,3 +29,25 @@ let extract_hash e = match e with
 | Array(_,_, (h, _))
 | Get(_,_, (h, _))
 | Put(_, _,_, (h, _))-> h
+
+let extract_simple_hash e = match e with
+| Unit(h)
+| Bool(_,h)
+| Int(_, h)
+| Float(_,h)
+| Not(_, h)
+| Var(_, h)
+| Neg(_, h)
+| FNeg(_, h)
+| IBop(_,_,_,h)
+| FBop(_,_,_,h)
+| Rel(_,_,_,h)
+| If(_,_,_, h)
+| Let(_,_,_, h)
+| LetRec(_,_, h)
+| App(_,_,h)
+| Tuple(_,h)
+| LetTuple(_,_,_,h)
+| Array(_,_, h)
+| Get(_,_, h)
+| Put(_, _,_, h)-> h

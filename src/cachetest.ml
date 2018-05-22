@@ -53,7 +53,7 @@ let test_fixture =
     let (te, cache) = analyzeExpr "examples/fact.ml" in
         let annot_list = build_annot_list te in
             (* Check the typing. TODO: check the context *)
-            ignore (List.for_all (fun (hash, tau) -> (snd (Cache.Cache.find hash cache)) = tau) annot_list)
+            assert_bool "Failed: fact.ml" ((List.for_all (fun (hash, tau) -> (snd (Cache.Cache.find hash cache)) = tau) annot_list))
   )
 ]
 
