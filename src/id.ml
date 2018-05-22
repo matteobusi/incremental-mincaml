@@ -1,5 +1,4 @@
 (* From https://github.com/esumii/min-caml *)
-
 type t = string (* MinCaml *)
 type l = L of string
 

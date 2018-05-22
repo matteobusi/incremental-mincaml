@@ -34,7 +34,7 @@ let analyzeExpr (file : string) =
   let e = Parser.exp Lexer.token lexbuf in
   try
     let te = Typing.f e in
-      let cache = Cache.buildCache te M.empty in 
+      let cache = Cache.buildCache te (M.add_list external_signatures M.empty) in 
         print_string (Annotast.string_of_annotast string_of_type te);
         print_string "\n=============================\n";
         Cache.print_cache cache;
@@ -44,8 +44,7 @@ let analyzeExpr (file : string) =
         print_newline ()
 
 
-let _ =
-  Typing.extenv := M.add_list external_signatures M.empty;
+let _ =  Typing.extenv := M.add_list external_signatures M.empty;
   if Array.length Sys.argv > 1 then
     Array.iteri (fun i exp -> if i > 0 then analyzeExpr exp else ()) Sys.argv
   else
