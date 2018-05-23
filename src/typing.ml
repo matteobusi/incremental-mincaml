@@ -146,7 +146,7 @@ let rec g env e = (* *)
        check (extract_type tes1) Type.Int;
        Array(tes1, tes2, (annot, Type.Array(extract_type tes2)))
     | Get(e1, e2, annot) ->
-             (* TODO: improve that *)
+      (* TODO: improve that *)
        let tes1 = g env e1 in
        let tes2 = g env e2 in
        let (Type.Array(t)) =  extract_type tes1 in

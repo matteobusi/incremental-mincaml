@@ -8,36 +8,7 @@ module Cache = Map.Make(struct
 
 let hash_collision k v1 v2 = Some v1
 
-let rec list_remove l e = match l with
-  | [] -> []
-  | x::xs when x = e -> list_remove xs x
-  | x::xs -> x :: (list_remove xs x)
-
-let rec free_variables e = match e with
-  | Unit(_)
-  | Bool(_)
-  | Int(_)
-  | Float(_) -> []
-  | Var(x, _) -> [x]
-  | Not(e1, _)
-  | Neg(e1, _) 
-  | FNeg(e1, _) -> free_variables e1 
-  | IBop(_, e1, e2, _)
-  | FBop(_, e1, e2, _)
-  | Rel(_, e1, e2, _) -> List.append (free_variables e1) (free_variables e2)
-  | If(e1,e2,e3, _) -> List.append (List.append (free_variables e1) (free_variables e2)) (free_variables e3)
-  | Let(x, e1, e2, _) -> list_remove (List.append (free_variables e1) (free_variables e2)) x
-  | LetRec ({ name = (x, t); args = yts; body = e1 }, e2, _) -> List.fold_left list_remove (List.append (free_variables e1) (free_variables e2)) (x::(List.map fst yts))
-  | App (e1, es, _) -> List.append (free_variables e1) (List.concat (List.map free_variables es))
-  | Tuple(es, _) -> List.concat (List.map free_variables es)
-  | LetTuple(xs, e1, e2, _) -> List.fold_left list_remove (List.append (free_variables e1) (free_variables e2)) xs
-  | Array(e1, e2, _) -> List.append (free_variables e1) (free_variables e2)
-  | Get (e1, e2, _) -> List.append (free_variables e1) (free_variables e2)
-  | Put (e1, e2, e3, _) ->  List.append (free_variables e1) (List.append (free_variables e2) (free_variables e3))
-
 (* let environment_restrict gamma e = List.fold_left (fun env el -> M.remove el env) gamma (bound_variables e) *)
-
-let environment_restrict gamma e = let fv = free_variables e in M.filter (fun k _ -> List.mem k fv) gamma
 
 let rec string_of_type t = match t with
 | Type.Unit -> "unit"
@@ -66,7 +37,7 @@ let rec print_cache c = Cache.iter print_pairs c
 
 (* buildCache: Type.t Annotast.t -> M.t -> Cache *)
 let rec buildCache e gammaf =
-  let gamma = environment_restrict gammaf e in 
+  let gamma = M.environment_restrict gammaf e in 
   (* print_gamma gammaf; Printf.printf " - "; print_gamma gamma; Printf.printf " - "; print_list (free_variables e); Printf.printf "\n"; *)
     match e with
   | Unit((hash, tau)) -> Cache.add hash (gamma, tau) Cache.empty

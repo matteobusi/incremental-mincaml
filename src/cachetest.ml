@@ -49,17 +49,22 @@ let analyzeExpr (file : string) =
 let test_fixture =
 "SimpleCache Tests">:::
 [
-  "fact">::( fun a ->
+  "fact">::( fun _ ->
     let (te, cache) = analyzeExpr "examples/fact.ml" in
         let annot_list = build_annot_list te in
             (* Check the typing. TODO: check the context *)
             assert_bool "Failed: fact.ml" ((List.for_all (fun (hash, tau) -> (snd (Cache.Cache.find hash cache)) = tau) annot_list))
+  );
+  "sum-tail">::( fun _ ->
+    let (te, cache) = analyzeExpr "examples/sum-tail.ml" in
+        let annot_list = build_annot_list te in
+            (* Check the typing. TODO: check the context *)
+            assert_bool "Failed: sum-tail.ml" ((List.for_all (fun (hash, tau) -> (snd (Cache.Cache.find hash cache)) = tau) annot_list))
   )
 ]
 
 (* Test Runner; ~verbose:true gives info on succ tests *)
 let () = run_test_tt_main test_fixture
-
 
 (*
 
