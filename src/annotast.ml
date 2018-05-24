@@ -128,8 +128,8 @@ let string_of_annotast string_of_payload  (expr : 'a t) : string =
 
 let rec list_remove l e = match l with
   | [] -> []
-  | x::xs when x = e -> list_remove xs x
-  | x::xs -> x :: (list_remove xs x)
+  | x::xs when (String.equal x e) -> list_remove xs e
+  | x::xs -> x :: (list_remove xs e)
 
 let rec free_variables e = match e with
   | Unit(_)
