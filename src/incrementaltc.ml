@@ -31,12 +31,6 @@ let rec incremental_tc gamma cache (e : int Annotast.t) = let cache_res = (extra
         cache_miss_itc gamma cache e
     | Some (gamma_cand, tau_cand) when not (check_ctx gamma gamma_cand e) ->
         IncrementalReport.register_miss_incomp report; 
-        print_gamma gamma;
-        print_newline ();
-        print_gamma gamma_cand;
-        print_newline (); 
-        print_list (free_variables e);
-        print_newline ();
         cache_miss_itc gamma cache e
     (* Found in cache and valid! *)
     | Some (gamma_cand, tau_cand) -> begin

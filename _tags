@@ -1,3 +1,4 @@
 true: bin_annot, debug
 <src/**>: include
-<src/**>: package(oUnit)
+<test/**>: include
+<test/**>: package(oUnit)
