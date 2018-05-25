@@ -4,7 +4,7 @@ open Annotast
 
 exception TypeError of Type.t * Type.t
 
-let extenv = ref M.empty
+(* let extenv = ref M.empty *)
 
 let check t1 t2 =
   let rec check_iter t1 t2 =
@@ -104,9 +104,9 @@ let rec g env e = (* *)
     | Var(x, annot) when M.mem x env ->
        let t = M.find x env in
        Var(x, (annot, t))
-    | Var(x, annot) when M.mem x !extenv ->
+    (* | Var(x, annot) when M.mem x !extenv ->
        let t = M.find x !extenv in
-       Var(x, (annot, t))
+       Var(x, (annot, t)) *)
     | Var(x, _) -> failwith ("Unbound variable: " ^ x)
     | LetRec({ name = (x, t); args = yts; body = e1 }, e2, annot) ->
        let funtype = Type.Fun(List.map snd yts, t) in
@@ -146,7 +146,7 @@ let rec g env e = (* *)
        check (extract_type tes1) Type.Int;
        Array(tes1, tes2, (annot, Type.Array(extract_type tes2)))
     | Get(e1, e2, annot) ->
-             (* TODO: improve that *)
+      (* TODO: improve that *)
        let tes1 = g env e1 in
        let tes2 = g env e2 in
        let (Type.Array(t)) =  extract_type tes1 in

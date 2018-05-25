@@ -1,4 +1,6 @@
 PRJ incremental-analysis
 S src
 
+PKG ounit
+
 B _build/src
