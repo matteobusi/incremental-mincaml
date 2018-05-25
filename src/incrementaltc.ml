@@ -23,7 +23,7 @@ let check_ctx gamma gamma_prime e = let fv = free_variables e in ((List.for_all 
                                                                 (List.for_all (fun v -> (M.find v gamma) = (M.find v gamma_prime)) fv))
           
 (* incremental_tc : gamma * cache * e -> e_annot * cache_prime *)
-let rec incremental_tc gamma cache (e : int Annotast.t) = let cache_res = (extract_cache (Hashing.extract_simple_hash e) cache) in
+let rec incremental_tc gamma cache (e : int Annotast.t) =  let cache_res = (extract_cache (Hashing.extract_simple_hash e) cache) in
     match cache_res with
     (* Found in cache, but not valid *)
     | None -> 
