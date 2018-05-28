@@ -4,12 +4,14 @@ open Hashing
 open Cache
 
 module IncrementalReport = struct
-    type report_data = { mutable cache_miss_inc : int; mutable cache_miss_none : int; mutable cache_hit : int}
-    let create () = { cache_hit = 0; cache_miss_inc = 0; cache_miss_none = 0}
+    type report_data = { mutable cache_miss_inc : int; mutable cache_miss_none : int; mutable cache_hit : int; mutable nc : int}
+    let create () = { cache_hit = 0; cache_miss_inc = 0; cache_miss_none = 0; nc = 0}
+    let reset r = r.cache_hit <- 0; r.cache_miss_inc <- 0; r.cache_miss_none <- 0; r.nc <- 0
+    let set_nc nc r = r.nc <- nc
     let register_hit r = r.cache_hit <- r.cache_hit + 1
     let register_miss_incomp r = r.cache_miss_inc <- r.cache_miss_inc + 1
     let register_miss_none r = r.cache_miss_none <- r.cache_miss_none + 1
-    let string_of_report r = Printf.sprintf "Cache hit: %d - Cache miss: %d (Incompatible) + %d (None) = %d\n" r.cache_hit r.cache_miss_inc r.cache_miss_none (r.cache_miss_inc+r.cache_miss_none)
+    let string_of_report r = Printf.sprintf "[Visited: %d/%d] H: %d - M: %d (I) + %d (NF) = %d\n" (r.cache_miss_inc+r.cache_miss_none+r.cache_hit) r.nc r.cache_hit r.cache_miss_inc r.cache_miss_none (r.cache_miss_inc+r.cache_miss_none)
 end
 
 let report = IncrementalReport.create ()

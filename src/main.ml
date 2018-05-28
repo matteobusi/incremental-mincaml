@@ -9,6 +9,28 @@ open Cache.Cache
 (* type hash_annot = H of int
  * let string_of_hash (H(n)) = string_of_int n
  * let string_of_hashtype (H(n),t) = Printf.sprintf "%d - %s" n (Type.string_of_type t) *)
+let rec nodecount e = match e with 
+    | Unit(annot)
+    | Bool(_, annot)
+    | Int(_, annot)
+    | Float(_, annot)
+    | Var(_, annot) -> 1
+    | Not(e1, annot)
+    | Neg(e1, annot)
+    | FNeg(e1, annot) -> 1 + nodecount e1
+    | IBop(_, e1, e2, annot)
+    | FBop(_, e1, e2, annot)
+    | Rel(_, e1, e2, annot) -> 1 + nodecount e1 + nodecount e2
+    | If(e1, e2, e3, annot) -> 1 + nodecount e1 + nodecount e2 + nodecount e3
+    | Let(_, e1, e2, annot) -> 2 + nodecount e1 + nodecount e2 (* curr node + x *)
+    | LetRec ({ name = _; args = yts; body = e1 }, e2, annot) -> 2 + (List.length yts) + nodecount e1 + nodecount e2
+    | App (e1, es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount (e1::es)))
+    | Tuple(es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount es))
+    | LetTuple(xs, e1, e2, annot) -> 1 + List.length xs + nodecount e1 + nodecount e2
+    | Array(e1, e2, annot)
+    | Get (e1, e2, annot) -> nodecount e1 + nodecount e2
+    | Put (e1, e2, e3, annot) -> nodecount e1 + nodecount e2 + nodecount e3
+
 
 let external_signatures = [
     "print_int" ,     Type.Fun([Type.Int], Type.Unit) ;
@@ -37,14 +59,16 @@ let analyzeExpr (file : string) (filem : string) =
       let te, tem = Typing.g gamma_init e, Typing.g gamma_init em in (* tem computed just to compare the results! *)
         let cache = Cache.buildCache te gamma_init in 
           let inctem = Incrementaltc.incremental_tc gamma_init cache em in (*Analyse the modified program *)
-        print_string (Annotast.string_of_annotast string_of_type te);
-        print_newline ();
-        print_string (Annotast.string_of_annotast string_of_type tem);
-        print_string "\n========= Cache =========\n";
-        Cache.print_cache cache;
-        print_string "=========================\n\n";
-        Printf.printf "Type: %s - IType: %s - %s\n" (Type.string_of_type (Typing.extract_type tem)) (Type.string_of_type (fst inctem)) (Incrementaltc.IncrementalReport.string_of_report Incrementaltc.report)
-        
+            let nc = nodecount em in
+              Incrementaltc.IncrementalReport.set_nc nc Incrementaltc.report;
+              (* print_string (Annotast.string_of_annotast string_of_type te);
+              print_newline ();
+              print_string (Annotast.string_of_annotast string_of_type tem);
+              print_string "\n========= Cache =========\n";
+              Cache.print_cache cache;
+              print_string "=========================\n\n"; *)
+              Printf.printf "Type: %s - IType: %s\n%s\n" (Type.string_of_type (Typing.extract_type tem)) (Type.string_of_type (fst inctem))(Incrementaltc.IncrementalReport.string_of_report Incrementaltc.report )
+            
   with Typing.TypeError _ -> print_string "Type error\n"
         (* print_string (Annotast.string_of_annotast (fun _ _ -> ()) e);
         print_newline () *)

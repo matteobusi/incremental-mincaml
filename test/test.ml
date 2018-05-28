@@ -15,6 +15,28 @@ let external_signatures = [
     "truncate",       Type.Fun([Type.Float], Type.Int);
   ]
 
+let rec nodecount e = match e with 
+    | Unit(annot)
+    | Bool(_, annot)
+    | Int(_, annot)
+    | Float(_, annot)
+    | Var(_, annot) -> 1
+    | Not(e1, annot)
+    | Neg(e1, annot)
+    | FNeg(e1, annot) -> 1 + nodecount e1
+    | IBop(_, e1, e2, annot)
+    | FBop(_, e1, e2, annot)
+    | Rel(_, e1, e2, annot) -> 1 + nodecount e1 + nodecount e2
+    | If(e1, e2, e3, annot) -> 1 + nodecount e1 + nodecount e2 + nodecount e3
+    | Let(_, e1, e2, annot) -> 2 + nodecount e1 + nodecount e2 (* curr node + x *)
+    | LetRec ({ name = _; args = yts; body = e1 }, e2, annot) -> 2 + (List.length yts) + nodecount e1 + nodecount e2
+    | App (e1, es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount (e1::es)))
+    | Tuple(es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount es))
+    | LetTuple(xs, e1, e2, annot) -> 1 + List.length xs + nodecount e1 + nodecount e2
+    | Array(e1, e2, annot)
+    | Get (e1, e2, annot) -> nodecount e1 + nodecount e2
+    | Put (e1, e2, e3, annot) -> nodecount e1 + nodecount e2 + nodecount e3
+
 let rec build_annot_list te = match te with
     | Unit(annot)
     | Bool(_, annot)
@@ -45,28 +67,32 @@ let analyzeExpr (file : string) =
           let te = Typing.g gamma_init e in
             let cache = Cache.buildCache te gamma_init in (te, cache)
 
-let analyzeIncremental (file : string) (filem : string) =
+let analyze_and_report (file : string) (filem : string) =
   let channel, channelm = open_in file, open_in filem in
     let lexbuf, lexbufm = Lexing.from_channel channel, Lexing.from_channel channelm in
       let e, em = Parser.exp Lexer.token lexbuf, Parser.exp Lexer.token lexbufm in
         let gamma_init = (M.add_list external_signatures M.empty) in
           let te, tem = Typing.g gamma_init e, Typing.g gamma_init em in (* tem computed just to compare the results! *)
             let cache = Cache.buildCache te gamma_init in 
+              Incrementaltc.IncrementalReport.reset Incrementaltc.report;
+              Incrementaltc.IncrementalReport.set_nc (nodecount tem) Incrementaltc.report;
               let inctem = Incrementaltc.incremental_tc gamma_init cache em in (*Analyse the modified program *)
-                (Typing.extract_type tem, fst inctem)
+                Printf.printf "[%s v. %s] - %s\n" file filem (Incrementaltc.IncrementalReport.string_of_report Incrementaltc.report);       (Typing.extract_type tem, fst inctem)
+
+
 
 let check_cache_result file = let (te, cache) = analyzeExpr file in
         let annot_list = build_annot_list te in
             (* Check the typing. TODO: check the context *)
             assert_bool ("[Cache] Failed: " ^ file) ((List.for_all (fun (hash, tau) -> (snd (Cache.Cache.find hash cache)) = tau) annot_list))
 
-let check_incremental_result fileo filem = let res = analyzeIncremental fileo filem in assert_equal (fst res) (snd res)
+let check_incremental_result fileo filem = let res = analyze_and_report fileo filem in assert_equal (fst res) (snd res)
 
 (* Test Fixture *)
 let test_cache  = "Test: Cache">:::
 [
   "fact.ml">::(fun _ -> check_cache_result "examples/fact.ml" );
-  "sum.ml">::(fun _ -> check_cache_result "examples/sum.ml" );
+  "sum-orig.ml">::(fun _ -> check_cache_result "examples/sum-orig.ml" );
   "sum-tail.ml">::(fun _ -> check_cache_result "examples/sum-tail.ml" );
   "ack.ml">::(fun _ -> check_cache_result "examples/ack.ml" );
 ]
@@ -75,14 +101,18 @@ let test_incr = "Test: Incremental TC">:::
 [
   "fact.ml - fact.ml">::(fun _ -> check_incremental_result "examples/fact.ml" "examples/fact.ml" );
   "fact.ml - fact_opt.ml">::(fun _ -> check_incremental_result "examples/fact.ml" "examples/fact_opt.ml" );
-  "sum.ml - sum-tail.ml">::(fun _ -> check_incremental_result "examples/sum.ml" "examples/sum-tail.ml" );
+  "sum-orig.ml - sum-tail.ml">::(fun _ -> check_incremental_result "examples/sum-orig.ml" "examples/sum-tail.ml" );
   "inprod.ml - inprod-loop.ml">::(fun _ -> check_incremental_result "examples/inprod.ml" "examples/inprod-loop.ml");
-  "fact.ml - ack.ml">::(fun _ -> check_incremental_result "examples/fact.ml" "examples/ack.ml" );
+  "fact.ml - ack.ml">::(fun _ -> check_incremental_result "examples/fact.ml" "examples/ack.ml" );  
+  "sum-orig.ml - sum-opti.ml">::(fun _ -> check_incremental_result "examples/sum-orig.ml" "examples/sum-opti.ml" );
+  "array-avg.ml - array-avg-codemotion.ml">::(fun _ -> check_incremental_result "examples/array-avg.ml" "examples/array-avg-codemotion.ml" );
+  "array-avg.ml - array-avg-if.ml">::(fun _ -> check_incremental_result "examples/array-avg.ml" "examples/array-avg-if.ml" );
+  "array-avg.ml - array-avg-ii.ml">::(fun _ -> check_incremental_result "examples/array-avg.ml" "examples/array-avg-ii.ml" );
 ]
 
 (* Test Runner; ~verbose:true gives info on succ tests *)
 let _ = 
-  run_test_tt_main test_cache; 
+  (* run_test_tt_main test_cache;  *)
   run_test_tt_main test_incr;
 
 (*
