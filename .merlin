@@ -1,6 +1,8 @@
-PRJ incremental-analysis
+PRJ incrementalAnalysis
 S src
+S test
 
 PKG ounit
 
 B _build/src
+B _build/test
