@@ -138,7 +138,7 @@ let rec list_remove l e = match l with
  *)
 
 let rec free_variables e =
-  let list_remove l e = List.filter (String.equal e) l in
+  let list_remove l e = List.filter (fun x -> not (String.equal e x)) l in
   match e with
   | Unit(_)
   | Bool(_)
