@@ -22,36 +22,6 @@ type 'a t = (* MinCaml *)
   | Put of 'a t * 'a t * 'a t * 'a
 and 'a fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : 'a t }
 
-(* Ugly: use ppf instead!
-let rec string_of_annotast (string_of_payload : 'a -> string) (expr : 'a t) : string =
-  let string_of_tree = string_of_annotast string_of_payload in
-  match expr with
-  | Unit(annot)            	-> Printf.sprintf "Unit{%s}" (string_of_payload annot)
-  | Bool(b, annot)         	-> Printf.sprintf "%b{%s}" b (string_of_payload annot)
-  | Int(n, annot)          	-> Printf.sprintf "%d{%s}" n (string_of_payload annot)
-  | Float(f, annot)        	-> Printf.sprintf "%f{%s}" f (string_of_payload annot)
-  | Not(e, annot)          	-> Printf.sprintf "Not(%s){%s}" (string_of_tree e) (string_of_payload annot)
-  | Neg(e ,annot)          	-> Printf.sprintf "-(%s){%s}" (string_of_tree e) (string_of_payload annot)
-  | IBop(op, e1, e2, annot)    	-> Printf.sprintf "%s(%s, %s){%s}" op (string_of_tree e1) (string_of_tree e2) (string_of_payload annot)
-  | FNeg(e, annot)         	-> Printf.sprintf "-.(%s){%s}" (string_of_tree e) (string_of_payload annot)
-  | FBop(op, e1, e2, annot)    	-> Printf.sprintf "%s(%s, %s){%s}" op (string_of_tree e1) (string_of_tree e2) (string_of_payload annot)
-  | Rel(op, e1, e2, annot)     	-> Printf.sprintf "%s(%s,%s){%s}" op (string_of_tree e1) (string_of_tree e2) (string_of_payload annot)
-  | If(e1, e2,e3, annot)   	-> Printf.sprintf "If(%s,%s,%s){%s}" (string_of_tree e1) (string_of_tree e2) (string_of_tree e3) (string_of_payload annot)
-  | Let(id, e1, e2, annot)      -> Printf.sprintf "Let(%s,%s,%s){%s}" id (string_of_tree e1) (string_of_tree e2) (string_of_payload annot)
-  | Var(id, annot)        	-> Printf.sprintf "Var(%s){%s}" id  (string_of_payload annot)
-  | LetRec(f, e, annot)   	-> Printf.sprintf "Let(%s,%s){%s}" (string_of_fundef string_of_payload f) (string_of_tree e) (string_of_payload annot)
-  | App(e, es, annot)     	-> let args = String.concat " " (List.map string_of_tree es) in
-                          	   Printf.sprintf "App(%s, %s){%s}" (string_of_tree e) args (string_of_payload annot)
-  | Tuple(es, annot)      	-> let args = String.concat " " (List.map string_of_tree es) in
-                                   Printf.sprintf "Tuple(%s){%s}" args (string_of_payload annot)
-  | LetTuple(bs, e1, e2, annot) -> Printf.sprintf "LetTuple(%s,%s,%s){%s}" (String.concat " " bs) (string_of_tree e1) (string_of_tree e2) (string_of_payload annot)
-  | Array(e1, e2, annot)    	-> Printf.sprintf "Array(%s,%s){%s}" (string_of_tree e1) (string_of_tree e2) (string_of_payload annot)
-  | Get(e1,e2, annot)       	-> Printf.sprintf "Get(%s,%s){%s}" (string_of_tree e1) (string_of_tree e2) (string_of_payload annot)
-  | Put(e1, e2, e3, annot)  	-> Printf.sprintf "Put(%s,%s,%s){%s}" (string_of_tree e1) (string_of_tree e2) (string_of_tree e3) (string_of_payload annot)
-and string_of_fundef (string_of_payload : 'a -> string) ({name = (id,t); args=formals; body=e}) =
-  let bindings = List.map (fun (id,t) -> Printf.sprintf "%s : %s" id (Type.string_of_type t)) formals in
-  Printf.sprintf "FunVal((%s : %s),(%s),%s)" id (Type.string_of_type t) (String.concat " " bindings) (string_of_annotast string_of_payload e)
- *)
 
 let get_annot e =
   match e with
@@ -75,6 +45,33 @@ let get_annot e =
   | Array(_,_, annot)
   | Get(_,_, annot)
   | Put(_, _,_, annot)      -> annot
+
+
+let map_annot f e =
+  let rec iter e = match e with
+    | Unit(annot)        -> Unit(f annot)
+    | Bool(b, annot)     -> Bool(b, f annot)
+    | Int(i, annot)      -> Int(i, f annot)
+    | Var(id, annot)     -> Var(id, f annot)
+    | Float(fv, annot)   -> Float(fv, f annot)
+    | Not(e1, annot)     -> Not(iter e1, f annot)
+    | Neg(e1, annot)     -> Neg(iter e1, f annot)
+    | FNeg(e1, annot)    -> FNeg(iter e1, f annot)
+    | IBop(op, e1, e2, annot)       -> IBop(op, iter e1, iter e2, f annot)
+    | FBop(op, e1, e2, annot)       -> FBop(op, iter e1, iter e2, f annot)
+    | Rel(op, e1, e2, annot)        -> Rel(op, iter e1, iter e2, f annot)
+    | Array(e1, e2, annot)          -> Array(iter e1, iter e2, f annot)
+    | Get(e1, e2, annot)            -> Get(iter e1, iter e2, f annot)
+    | Let(id, e1, e2, annot)        -> Let(id, iter e1, iter e2, f annot)
+    | LetTuple(id, e1, e2, annot)   -> LetTuple(id, iter e1, iter e2, f annot)
+    | If(e1, e2, e3, annot)         -> If(iter e1, iter e2, iter e3, f annot)
+    | Put(e1, e2, e3, annot)        -> Put(iter e1, iter e2, iter e3, f annot)
+    | App(e1, es, annot)            -> App(iter e1, List.map iter es, f annot)
+    | Tuple(es, annot)              -> Tuple(List.map iter es, f annot)
+    | LetRec({name=_ ; args=_ ; body = e1} as fdef, e2, annot) ->
+      LetRec({fdef with body = iter e1}, iter e2, f annot)
+  in
+  iter e
 
 
 let rec ppf_annotast ppf_payload ppf (e : 'a t) =
@@ -126,20 +123,31 @@ let string_of_annotast string_of_payload  (expr : 'a t) : string =
   ppf_annotast string_of_payload Format.str_formatter expr;
   Format.flush_str_formatter ()
 
+
+(*
+   Dato che viene usato solo dentro
+   free_variables si può spostare
+   come funzione locale.
+   Si può semplificare l'implementazione usando
+   List.filter
+
 let rec list_remove l e = match l with
   | [] -> []
   | x::xs when (String.equal x e) -> list_remove xs e
   | x::xs -> x :: (list_remove xs e)
+ *)
 
-let rec free_variables e = match e with
+let rec free_variables e =
+  let list_remove l e = List.filter (fun x -> not (String.equal e x)) l in
+  match e with
   | Unit(_)
   | Bool(_)
   | Int(_)
   | Float(_) -> []
   | Var(x, _) -> [x]
   | Not(e1, _)
-  | Neg(e1, _) 
-  | FNeg(e1, _) -> free_variables e1 
+  | Neg(e1, _)
+  | FNeg(e1, _) -> free_variables e1
   | IBop(_, e1, e2, _)
   | FBop(_, e1, e2, _)
   | Rel(_, e1, e2, _) -> List.append (free_variables e1) (free_variables e2)

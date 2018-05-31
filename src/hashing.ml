@@ -8,6 +8,11 @@ let combine_hashes hashes =
 
 let compute_hash = Hashtbl.hash
 
+
+(*
+   Questa può essere definita in termini di Annotast.get_annot
+   e di snd
+
 let extract_hash e = match e with
 | Unit(h, _)
 | Bool(_,(h, _))
@@ -29,6 +34,12 @@ let extract_hash e = match e with
 | Array(_,_, (h, _))
 | Get(_,_, (h, _))
 | Put(_, _,_, (h, _))-> h
+*)
+
+let extract_hash e = Annotast.get_annot e |> fst
+
+(*
+   Questa può essere definita in termini di Annotast.get_annot
 
 let extract_simple_hash e = match e with
 | Unit(h)
@@ -51,3 +62,6 @@ let extract_simple_hash e = match e with
 | Array(_,_, h)
 | Get(_,_, h)
 | Put(_, _,_, h)-> h
+ *)
+
+let extract_simple_hash e = Annotast.get_annot e

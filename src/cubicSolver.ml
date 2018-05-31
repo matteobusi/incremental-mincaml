@@ -156,7 +156,9 @@ let collapseCycle cycle solver =
     if (Pervasives.compare node1 node2) <> 0 then
       let nnode1 = {node1 with successors = VarSet.add v2 node1.successors } in
       let solver1 = addNode solver v1 nnode1 in
-      let solver2 = addAndPropagate solver1 nnode1.tokenSol v2 in
+      (* Ugly, but it works *)
+      let solver11 = addNode solver1 v2 node2 in
+      let solver2 = addAndPropagate solver11 nnode1.tokenSol v2 in
       collapseCycle (detectPath node2 nnode1 solver2) solver2
     else
       solver
