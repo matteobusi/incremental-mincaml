@@ -11,7 +11,7 @@ native: $(TARGET).native
 %.native:
 	ocamlbuild -use-ocamlfind $@
 
-%.byte: clean
+%.byte:
 	ocamlbuild -use-ocamlfind $@
 
 test: default
