@@ -53,18 +53,18 @@ Here is a description of content of the repository
 
 The `src/` directory defines:
 
-    `annotast.ml` <-- the annotated abstrac syntax tree
-    `cache.ml`    <-- the cache for incremental type checking
-    `incrementaltc.ml` <-- the actual incremental type checker obtained according to the method in [1]
-    `typing.ml` <-- the original type checking algorithm
+    annotast.ml      <-- the annotated abstrac syntax tree
+    cache.ml         <-- the cache for incremental type checking
+    incrementaltc.ml <-- the actual incremental type checker obtained according to the method in [1]
+    typing.ml        <-- the original type checking algorithm
 
 ## Known issues (to solve in future versions)
--
+- None, yet
 
 ### TODOS #
-1. Incremental type inference
-2. Nameless implementation
-3. More efficient representation of caches
-4. Other analyses
+- Incremental type inference
+- Nameless implementation
+- More efficient representation of caches
+- Other analyses
 
 [1] M. Busi, P. Degano, L. Galletta, ``Using Standard Algorithms Incrementally''
