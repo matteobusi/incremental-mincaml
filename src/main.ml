@@ -52,11 +52,15 @@ let string_of_type ppf (h,t) = Format.fprintf ppf "@[<2>%d - %a@]" h Type.type_p
 let analyzeExpr (file : string) (filem : string) =
   Printf.printf "Analyzing: Orig: %s Mod: %s ...\n" file filem;
   let channel, channelm = open_in file, open_in filem in
-  let lexbuf, lexbufm = Lexing.from_channel channel, Lexing.from_channel channelm in
-  let e, em = Parser.exp Lexer.token lexbuf, Parser.exp Lexer.token lexbufm in
+  let lexbuf = Lexing.from_channel channel in
+  let e = Parser.exp Lexer.token lexbuf in
+  Id.counter := 0;
+  let lexbufm = Lexing.from_channel channelm in
+  let em = Parser.exp Lexer.token lexbufm in
   try
     let gamma_init = (M.add_list external_signatures M.empty) in
-      let te, tem = Typing.g gamma_init e, Typing.g gamma_init em in (* tem computed just to compare the results! *)
+      let te = Typing.g gamma_init e in
+        let tem = Typing.g gamma_init em in (* tem computed just to compare the results! *)
         let cache = Cache.buildCache te gamma_init in 
           let inctem = Incrementaltc.incremental_tc gamma_init cache em in (*Analyse the modified program *)
             let nc = nodecount em in
@@ -67,9 +71,9 @@ let analyzeExpr (file : string) (filem : string) =
               print_string "\n========= Cache =========\n";
               Cache.print_cache cache;
               print_string "=========================\n\n"; *)
-              Printf.printf "Type: %s - IType: %s\n%s\n" (Type.string_of_type (Typing.extract_type tem)) (Type.string_of_type (fst inctem))(Incrementaltc.IncrementalReport.string_of_report Incrementaltc.report )
-            
-  with Typing.TypeError _ -> print_string "Type error\n"
+              Printf.printf "Type: %s - IType: %s\n%s\n" (Type.string_of_type (Typing.extract_type tem)) (Type.string_of_type (fst inctem))(Incrementaltc.IncrementalReport.string_of_report Incrementaltc.report );            
+  with Typing.TypeError _ -> print_string "Type error\n";
+        exit 1
         (* print_string (Annotast.string_of_annotast (fun _ _ -> ()) e);
         print_newline () *)
 
@@ -77,7 +81,10 @@ let analyzeExpr (file : string) (filem : string) =
 let _ =  
 (* Typing.extenv := M.add_list external_signatures M.empty; *)
   if Array.length Sys.argv = 3 then
-    analyzeExpr Sys.argv.(1) Sys.argv.(2)
+    begin
+    analyzeExpr Sys.argv.(1) Sys.argv.(2); 
+    exit 0
     (* Array.iteri (fun i exp -> if i > 0 then analyzeExpr exp else ()) Sys.argv *)
+    end
   else
     Printf.eprintf "Usage:\n %s file1.ml file2.ml\n" Sys.argv.(0)

@@ -1,6 +1,11 @@
 %{
 (* parser *)
 (* From https://github.com/esumii/min-caml *)
+(* Adapted to slightly different language @ UniPI 
+Improvements/fixes:
+    - English comments
+    - Better errors
+*)
 open Annotast
 open Hashing
 
@@ -42,7 +47,7 @@ let hash_of_fundef ({name=(id,rt); args=xs; body=e}) =
 %token COMMA
 %token ARRAY_CREATE
 %token DOT
-/* (* NUOVI TOKEN: OPERATORI *) */
+/* (* New tokes: operators *) */
 %token COLON
 %token ARROW
 %token AST
@@ -52,7 +57,7 @@ let hash_of_fundef ({name=(id,rt); args=xs; body=e}) =
 %token SEMICOLON
 %token LPAREN
 %token RPAREN
-/* (* NUOVI TOKEN: tipi *) */
+/* (* New tokens: types *) */
 %token TYPE_INT
 %token TYPE_BOOL
 %token TYPE_FLOAT
@@ -112,7 +117,7 @@ exp: /* (* Expressions *) */
 | MINUS exp
     %prec prec_unary_minus
     { match $2 with
-    | Float(f, _) -> Float(-.f, compute_hash (-.f)) (* -1.23 *)
+    | Float(f, _) -> Float(-.f, compute_hash (-.f)) (* e.g. -1.23 *)
     | e -> Neg(e, combine_hashes [compute_hash "neg"; get_hash e]) }
 | exp PLUS exp /* (* Arithmetic operations on integers *) */
     {
@@ -242,11 +247,11 @@ exp: /* (* Expressions *) */
     { Put($1, $4, $7, combine_hashes [compute_hash "put"; get_hash $1; get_hash $4; get_hash $7]) }
 | exp SEMICOLON exp
     {
-        let nid =  Id.gentmp Type.Unit in
-        let hs = [compute_hash "let;";
-	          compute_hash nid;
-                  get_hash $1 ;
-		  get_hash $3 ] in
+        let nid = Id.gentmp Type.Unit in
+        let hs = [compute_hash "semicol";
+	            compute_hash nid;
+                get_hash $1;
+		        get_hash $3 ] in
         Let(nid, $1, $3, combine_hashes hs)
     }
 | ARRAY_CREATE simple_exp simple_exp
@@ -254,15 +259,14 @@ exp: /* (* Expressions *) */
     { Array($2, $3, combine_hashes [compute_hash "mkar"; get_hash $3; get_hash $3 ]) }
 | error
     { failwith
-        (Printf.sprintf "parse error near characters %d-%d"
-           (Parsing.symbol_start ())
-           (Parsing.symbol_end ())) }
+        (Printf.sprintf "Parse error at line %d."
+           (Parsing.symbol_start_pos ()).pos_lnum) }
 
-fundef:
+fundef: /* (* e.g. f (y_1 : \tau_1, ..., y_n : \tau_n) : \tau_f = ...*) */
 | IDENT formal_args COLON types EQUAL exp
     { { name = ($1,$4); args = $2; body = $6 } }
 
-formal_args:
+formal_args: /* (* e.g. (y_1 : \tau_1, ..., y_n : \tau_n) *) */
 | LPAREN IDENT COLON types RPAREN formal_args
     { ($2,$4) :: $6 }
 | LPAREN IDENT COLON types RPAREN

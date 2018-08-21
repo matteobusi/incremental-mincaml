@@ -1,21 +1,27 @@
 {
 (* lexer *)
 (* From https://github.com/esumii/min-caml *)
+(* Adapted to slightly different language @ UniPI 
+Improvements/fixes:
+    - English comments
+    - Better errors
+*)
 open Parser
 open Type
 }
 
-(* 正規表現の略記 *)
+(* Shorthands for frenquently used regexes *)
 let space = [' ' '\t' '\n' '\r']
 let digit = ['0'-'9']
 let lower = ['a'-'z']
 let upper = ['A'-'Z']
 
+(* Actual rules *)
 rule token = parse
 | space+
     { token lexbuf }
 | "(*"
-    { comment lexbuf; (* ネストしたコメントのためのトリック *)
+    { comment lexbuf;
       token lexbuf }
 | '('
     { LPAREN }
@@ -27,15 +33,15 @@ rule token = parse
     { BOOL(false) }
 | "not"
     { NOT }
-| digit+ (* 整数を字句解析するルール (caml2html: lexer_int) *)
+| digit+
     { INT(int_of_string (Lexing.lexeme lexbuf)) }
 | digit+ ('.' digit*)? (['e' 'E'] ['+' '-']? digit+)?
     { FLOAT(float_of_string (Lexing.lexeme lexbuf)) }
-| '-' (* -.より後回しにしなくても良い? 最長一致? *)
+| '-' (* Int ops *)
     { MINUS }
-| '+' (* +.より後回しにしなくても良い? 最長一致? *)
+| '+'
     { PLUS }
-| "-."
+| "-." (* Float ops *)
     { MINUS_DOT }
 | "+."
     { PLUS_DOT }
@@ -101,14 +107,14 @@ rule token = parse
     { RBRACKET }
 | "->"
     { ARROW }
-| lower (digit|lower|upper|'_')* (* 他の「予約語」より後でないといけない *)
+| lower (digit|lower|upper|'_')* (* Identifiers: start with lower case letters, then continue with 0 or more chars *)
     { IDENT(Lexing.lexeme lexbuf) }
 | _
     { failwith
-        (Printf.sprintf "unknown token %s near characters %d-%d"
+        (Printf.sprintf "Syntax Error: unknown token %s @ %d:%d"
            (Lexing.lexeme lexbuf)
-           (Lexing.lexeme_start lexbuf)
-           (Lexing.lexeme_end lexbuf)) }
+           ((Lexing.lexeme_start_p lexbuf).pos_lnum)
+           ((Lexing.lexeme_start_p lexbuf).pos_cnum)) }
 and comment = parse
 | "*)"
     { () }
@@ -116,6 +122,6 @@ and comment = parse
     { comment lexbuf;
       comment lexbuf }
 | eof
-    { Format.eprintf "warning: unterminated comment@." }
+    { Format.eprintf "Warning: unterminated comment!" }
 | _
     { comment lexbuf }
