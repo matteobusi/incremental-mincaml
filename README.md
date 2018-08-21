@@ -10,7 +10,7 @@ The project requires:
 
 - [OCaml >= 4.06.1](http://www.ocaml.org/) standard compilers and tools
 - [Ounit/OUnit2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library. 
-
+- [Nearley](https://github.com/kach/nearley) Parser generator with unparsing function.
 ## Building the project #
 Typing `make` will generate a `main.byte` executable, that you can run to try the incremental typechecker:
 ```
