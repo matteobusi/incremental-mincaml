@@ -2,13 +2,6 @@ open Annotast
 open Typing
 open Cache.Cache
 
-(*
-   Prove di annotazioni
- *)
-
-(* type hash_annot = H of int
- * let string_of_hash (H(n)) = string_of_int n
- * let string_of_hashtype (H(n),t) = Printf.sprintf "%d - %s" n (Type.string_of_type t) *)
 let rec nodecount e = match e with 
     | Unit(annot)
     | Bool(_, annot)
@@ -31,22 +24,13 @@ let rec nodecount e = match e with
     | Get (e1, e2, annot) -> nodecount e1 + nodecount e2
     | Put (e1, e2, e3, annot) -> nodecount e1 + nodecount e2 + nodecount e3
 
+let rec listProd l1 l2 = match l1 with
+    | [] -> []
+    | l::ls -> (List.map (fun e -> l ^ e) l2) @ (listProd ls l2)
+let idTypeList s t = 
+    List.map (fun id -> (id, t)) (listProd [s] (listProd ["0"; "1"; "2"; "3"; "4"; "5"; "6"; "7"; "8"; "9"] ["0"; "1"; "2"; "3"; "4"; "5"; "6"; "7"; "8"; "9"]))
+let initialGammaList () = (idTypeList "b" Type.Bool) @ (idTypeList "n" Type.Int) @ (idTypeList "f" (Type.Fun([Type.Int], Type.Int)))
 
-let external_signatures = [
-    "print_int" ,     Type.Fun([Type.Int], Type.Unit) ;
-    "print_newline" , Type.Fun([Type.Unit], Type.Unit) ;
-    "int_of_float",   Type.Fun([Type.Float], Type.Int) ;
-    "float_of_int",   Type.Fun([Type.Int], Type.Float) ;
-    "sin",            Type.Fun([Type.Float], Type.Float) ;
-    "cos",            Type.Fun([Type.Float], Type.Float) ;
-    "sqrt",           Type.Fun([Type.Float], Type.Float) ;
-    "abs_float",      Type.Fun([Type.Float], Type.Float) ;
-    "truncate",       Type.Fun([Type.Float], Type.Int);
-  ]
-
-(*
-let string_of_type (_,t) = Printf.sprintf "%s" (Type.string_of_type t)
- *)
 let string_of_type ppf (h,t) = Format.fprintf ppf "@[<2>%d - %a@]" h Type.type_ppf t
 
 let analyzeExpr (file : string) (filem : string) =
@@ -54,11 +38,11 @@ let analyzeExpr (file : string) (filem : string) =
   let channel, channelm = open_in file, open_in filem in
   let lexbuf = Lexing.from_channel channel in
   let e = Parser.exp Lexer.token lexbuf in
-  Id.counter := 0;
+  Id.counter := 0; (* Fix to avoid situations where the same subtree has different hashes *)
   let lexbufm = Lexing.from_channel channelm in
   let em = Parser.exp Lexer.token lexbufm in
   try
-    let gamma_init = (M.add_list external_signatures M.empty) in
+    let gamma_init = (M.add_list (initialGammaList ()) M.empty) in
       let te = Typing.g gamma_init e in
         let tem = Typing.g gamma_init em in (* tem computed just to compare the results! *)
         let cache = Cache.buildCache te gamma_init in 

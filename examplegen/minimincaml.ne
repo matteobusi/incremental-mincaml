@@ -4,7 +4,7 @@
 #   - declared ids are not used
 #   - if statements are restricted
 #   - free variables in expressions are from productions at the end of file
-#   - application specify a function name (from (fid) and a single integer parameter (from nid)
+#   - application specify a function name (from fid) and a single integer parameter (from nid)
 #   - just int and bool expressions are present
 #   - all parentheses are explicit
 #   - no sequencing

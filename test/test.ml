@@ -69,17 +69,18 @@ let analyzeExpr (file : string) =
 
 let analyze_and_report (file : string) (filem : string) =
   let channel, channelm = open_in file, open_in filem in
-    let lexbuf, lexbufm = Lexing.from_channel channel, Lexing.from_channel channelm in
-      let e, em = Parser.exp Lexer.token lexbuf, Parser.exp Lexer.token lexbufm in
-        let gamma_init = (M.add_list external_signatures M.empty) in
-          let te, tem = Typing.g gamma_init e, Typing.g gamma_init em in (* tem computed just to compare the results! *)
-            let cache = Cache.buildCache te gamma_init in 
-              Incrementaltc.IncrementalReport.reset Incrementaltc.report;
-              Incrementaltc.IncrementalReport.set_nc (nodecount tem) Incrementaltc.report;
-              let inctem = Incrementaltc.incremental_tc gamma_init cache em in (*Analyse the modified program *)
-                Printf.printf "[%s v. %s] - %s\n" file filem (Incrementaltc.IncrementalReport.string_of_report Incrementaltc.report);       (Typing.extract_type tem, fst inctem)
-
-
+    let lexbuf = Lexing.from_channel channel in
+      let e = Parser.exp Lexer.token lexbuf in
+        Id.counter := 0; (* Fix to avoid situations where the same subtree has different hash *)
+        let lexbufm = Lexing.from_channel channelm in
+          let em = Parser.exp Lexer.token lexbufm in
+            let gamma_init = (M.add_list external_signatures M.empty) in
+              let te, tem = Typing.g gamma_init e, Typing.g gamma_init em in (* tem computed just to compare the results! *)
+                let cache = Cache.buildCache te gamma_init in 
+                  Incrementaltc.IncrementalReport.reset Incrementaltc.report;
+                  Incrementaltc.IncrementalReport.set_nc (nodecount tem) Incrementaltc.report;
+                  let inctem = Incrementaltc.incremental_tc gamma_init cache em in (*Analyse the modified program *)
+                    Printf.printf "[%s v. %s] - %s\n" file filem (Incrementaltc.IncrementalReport.string_of_report Incrementaltc.report);       (Typing.extract_type tem, fst inctem)
 
 let check_cache_result file = let (te, cache) = analyzeExpr file in
         let annot_list = build_annot_list te in

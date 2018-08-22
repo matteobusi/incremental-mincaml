@@ -1,8 +1,8 @@
-# Heavely Nearley's BNF for restricted MinCamL
-e ->  "if" __ bexp __ "then" __ "(" nexp ")" __ "else" __ "(" nexp ")" # WARN: restricted to just binary expressions!
-    |   "let" __ id "="  "(" nexp ")" __ "in" __  "(" e ")" | "let" __ "rec" __ fdef __ "in" __  "(" e ")" | "let" __ "(" pat ")" __ "=" __  "(" nexp ")" __ "in" __  "(" e ")"
-    |   "Array.create" __ "(" num ")" __ "(" num ")"
-    |   "(" id __ aargs ")" # WARN: restricted to just names
+# Nearley's BNF for MinCamL
+e ->  "if" __ e __ "then" __ "(" e ")" __ "else" __ "(" e ")" # WARN: restricted to just binary expressions!
+    |   "let" __ id "="  "(" e ")" __ "in" __  "(" e ")" | "let" __ "rec" __ fdef __ "in" __  "(" e ")" | "let" __ "(" pat ")" __ "=" __  "(" e ")" __ "in" __  "(" e ")"
+    |   "Array.create" __ "(" e ")" __ "(" e ")"
+    |   "(" se __ aargs ")" 
     |   els
     |   "(" e ";" __ e ")"
     |   se 

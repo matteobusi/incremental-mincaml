@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Language
 lang=OCaml
 ext=ocaml
