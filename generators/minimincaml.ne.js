@@ -10,9 +10,8 @@ var grammar = {
     {"name": "e$string$3", "symbols": [{"literal":"e"}, {"literal":"l"}, {"literal":"s"}, {"literal":"e"}], "postprocess": function joiner(d) {return d.join('');}},
     {"name": "e", "symbols": ["e$string$1", "_", "bexp", "_", "e$string$2", "_", {"literal":"("}, "e", {"literal":")"}, "_", "e$string$3", "_", {"literal":"("}, "e", {"literal":")"}]},
     {"name": "e$string$4", "symbols": [{"literal":"l"}, {"literal":"e"}, {"literal":"t"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "e$string$5", "symbols": [{"literal":"i"}, {"literal":"d"}, {"literal":"_"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "e$string$6", "symbols": [{"literal":"i"}, {"literal":"n"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "e", "symbols": ["e$string$4", "_", "e$string$5", "id", "_", {"literal":"="}, "_", {"literal":"("}, "e", {"literal":")"}, "_", "e$string$6", "_", {"literal":"("}, "e", {"literal":")"}]},
+    {"name": "e$string$5", "symbols": [{"literal":"i"}, {"literal":"n"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "e", "symbols": ["e$string$4", "_", "lid", "_", {"literal":"="}, "_", {"literal":"("}, "e", {"literal":")"}, "_", "e$string$5", "_", {"literal":"("}, "e", {"literal":")"}]},
     {"name": "e", "symbols": [{"literal":"("}, "fid", "_", "nexp", {"literal":")"}]},
     {"name": "e", "symbols": ["nexp"]},
     {"name": "id", "symbols": [/[a-zA-Z]/]},
@@ -43,9 +42,17 @@ var grammar = {
     {"name": "ibop", "symbols": [{"literal":"-"}]},
     {"name": "ibop", "symbols": [{"literal":"*"}]},
     {"name": "_", "symbols": [/[ ]/]},
-    {"name": "bid", "symbols": [{"literal":"b"}, "digit", "digit"]},
-    {"name": "nid", "symbols": [{"literal":"n"}, "digit", "digit"]},
-    {"name": "fid", "symbols": [{"literal":"f"}, "digit", "digit"]}
+    {"name": "bid$string$1", "symbols": [{"literal":"b"}, {"literal":"_"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "bid", "symbols": ["bid$string$1", "idPost"]},
+    {"name": "nid$string$1", "symbols": [{"literal":"n"}, {"literal":"_"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "nid", "symbols": ["nid$string$1", "idPost"]},
+    {"name": "fid$string$1", "symbols": [{"literal":"f"}, {"literal":"_"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "fid", "symbols": ["fid$string$1", "idPost"]},
+    {"name": "lid$string$1", "symbols": [{"literal":"l"}, {"literal":"_"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "lid", "symbols": ["lid$string$1", "idPost"]},
+    {"name": "idPost$ebnf$1", "symbols": ["digit"]},
+    {"name": "idPost$ebnf$1", "symbols": ["idPost$ebnf$1", "digit"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "idPost", "symbols": ["idPost$ebnf$1"]}
 ]
   , ParserStart: "e"
 }

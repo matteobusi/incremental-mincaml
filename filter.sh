@@ -70,7 +70,7 @@ mkdir OK
 # Finally run the analyser on each file, expect 0 on success.
 for f in `ls *.$ext`; do
 	echo -n "Typing $f.";
-	../main.byte "$f" "$f"
+	../../main.byte "$f" "$f"
 	if [ $? -eq 0 ]
 	then
 		echo "OK";

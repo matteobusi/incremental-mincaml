@@ -1,5 +1,4 @@
 (* customized version of Map *)
-
 module M =
   Map.Make
     (struct
@@ -10,4 +9,4 @@ include M
 
 let add_list xys env = List.fold_left (fun env (x, y) -> add x y env) env xys
 let add_list2 xs ys env = List.fold_left2 (fun env x y -> add x y env) env xs ys
-let environment_restrict gamma e = let fv = Annotast.free_variables e in M.filter (fun k _ -> List.mem k fv) gamma
+let restrict gamma e = let fv = Annotast.free_variables e in M.filter (fun k _ -> List.mem k fv) gamma

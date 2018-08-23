@@ -58,22 +58,22 @@ $ ./test.byte
 
 Here is a description of content of the repository
 
-     src/            <-- source code lives here
-     test/	         <-- unit test for code implementing the cache and the incremental type checker
-     examples/       <-- small MinCaml programs
+     src/                 <-- source code lives here
+     test/	              <-- unit test for code implementing the cache and the incremental type checker
+     examples/            <-- small MinCaml programs
 
-     Makefile        <-- Driver for `make` (uses OCB)
-     .merlin         <-- Merlin configuration
-     _tags           <-- OCamlBuild configuration
+     Makefile             <-- Driver for `make` (uses OCB)
+     .merlin              <-- Merlin configuration
+     _tags                <-- OCamlBuild configuration
 
 ## The source code
 
 The `src/` directory defines:
 
-     annotast.ml      <-- the annotated abstrac syntax tree
-     cache.ml         <-- the cache for incremental type checking
-     incrementaltc.ml <-- the actual incremental type checker obtained according to the method in [1]
-     typing.ml        <-- the original type checking algorithm
+     annotast.ml          <-- the annotated abstrac syntax tree
+     cache.ml             <-- the cache for incremental type checking
+     incrementaltyping.ml <-- the actual incremental type checker obtained according to the method in [1]
+     typing.ml            <-- the original type checking algorithm
 
 ## Known issues (to solve in future versions) #
 - None, yet

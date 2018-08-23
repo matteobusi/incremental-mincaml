@@ -64,8 +64,8 @@ let analyzeExpr (file : string) =
     let lexbuf = Lexing.from_channel channel in
       let e = Parser.exp Lexer.token lexbuf in
         let gamma_init = (M.add_list external_signatures M.empty) in  
-          let te = Typing.g gamma_init e in
-            let cache = Cache.buildCache te gamma_init in (te, cache)
+          let te = Typing.typecheck gamma_init e in
+            let cache = Cache.build_cache te gamma_init in (te, cache)
 
 let analyze_and_report (file : string) (filem : string) =
   let channel, channelm = open_in file, open_in filem in
@@ -75,12 +75,12 @@ let analyze_and_report (file : string) (filem : string) =
         let lexbufm = Lexing.from_channel channelm in
           let em = Parser.exp Lexer.token lexbufm in
             let gamma_init = (M.add_list external_signatures M.empty) in
-              let te, tem = Typing.g gamma_init e, Typing.g gamma_init em in (* tem computed just to compare the results! *)
-                let cache = Cache.buildCache te gamma_init in 
-                  Incrementaltc.IncrementalReport.reset Incrementaltc.report;
-                  Incrementaltc.IncrementalReport.set_nc (nodecount tem) Incrementaltc.report;
-                  let inctem = Incrementaltc.incremental_tc gamma_init cache em in (*Analyse the modified program *)
-                    Printf.printf "[%s v. %s] - %s\n" file filem (Incrementaltc.IncrementalReport.string_of_report Incrementaltc.report);       (Typing.extract_type tem, fst inctem)
+              let te, tem = Typing.typecheck gamma_init e, Typing.typecheck gamma_init em in (* tem computed just to compare the results! *)
+                let cache = Cache.build_cache te gamma_init in 
+                  Incrementaltyping.IncrementalReport.reset Incrementaltyping.report;
+                  Incrementaltyping.IncrementalReport.set_nc (nodecount tem) Incrementaltyping.report;
+                  let inctem = Incrementaltyping.incremental_tc gamma_init cache em in (*Analyse the modified program *)
+                    Printf.printf "[%s v. %s] - %s\n" file filem (Incrementaltyping.IncrementalReport.string_of_report Incrementaltyping.report);       (Typing.extract_type tem, fst inctem)
 
 let check_cache_result file = let (te, cache) = analyzeExpr file in
         let annot_list = build_annot_list te in
