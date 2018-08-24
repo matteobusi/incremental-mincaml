@@ -1,17 +1,11 @@
 open Annotast
 open Typing
-open Cache.Cache
+open Cache
+open M
+open Incremental
+open Varset
 
-(* TODO: HACK: Fill the initial gamma with proper types based on id prefix *)
-let initialGammaList e = List.map (
-    fun id -> match id.[0] with 
-      | 'b' -> (id, Type.Bool)
-      | 'n' -> (id, Type.Int)
-      | 'f' -> (id, Type.Fun([Type.Int], Type.Int))
-      | _ -> failwith "Unexpected variable name!"
-  ) 
-  (Annotast.free_variables e)
-
+let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.to_list (Annotast.free_variables e)))
 
 let analyzeExpr (file : string) (filem : string) =
   Printf.printf "Analyzing: Orig: %s Mod: %s ...\n" file filem;
@@ -22,23 +16,36 @@ let analyzeExpr (file : string) (filem : string) =
   let lexbufm = Lexing.from_channel channelm in
   let em = Parser.exp Lexer.token lexbufm in
   try
-    let gamma_init = (M.add_list (initialGammaList e) M.empty) in (* Just for experimenting, real programs will have empty gamma_init! *)
-    let gamma_init_m = (M.add_list (initialGammaList e) M.empty) in
+    let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in (* Just for experimenting, real programs will have empty gamma_init! *)
+    let gamma_init_m = (M.add_list (initial_gamma_list e) M.empty) in
     let te = Typing.typecheck gamma_init e in
     let tem = Typing.typecheck gamma_init em in (* tem computed just to compare the results! *)
     let cache = Cache.build_cache te gamma_init in 
-    let inctem = Incrementaltyping.incremental_tc gamma_init_m cache em in (*Analyse the modified program *)
+    let inctem = IncrementalTyping.typecheck cache gamma_init_m em in (*Analyse the modified program *)
     let nc = (Annotast.node_count em) in
-    Incrementaltyping.IncrementalReport.set_nc nc Incrementaltyping.report;
-    Printf.printf "Type: %s - IType: %s\n%s\n" (Type.string_of_type (Typing.extract_type tem)) (Type.string_of_type (fst inctem))(Incrementaltyping.IncrementalReport.string_of_report Incrementaltyping.report );            
+    IncrementalReport.set_nc nc IncrementalTyping.report;
+    Printf.printf "Type: %s - IType: %s\n%s\n" (Type.string_of_type (Typing.extract_type tem)) (Type.string_of_type (fst inctem))(IncrementalReport.string_of_report IncrementalTyping.report );            
   with Typing.TypeError _ -> print_string "Type error\n";
     exit 1
 
 let _ =  
-  if Array.length Sys.argv = 3 then
+  (* if Array.length Sys.argv = 3 then
     begin
       analyzeExpr Sys.argv.(1) Sys.argv.(2); 
       exit 0
     end
   else
-    Printf.eprintf "Usage:\n %s file1.ml file2.ml\n" Sys.argv.(0)
+    Printf.eprintf "Usage:\n %s file1.ml file2.ml\n" Sys.argv.(0) *)
+     Printf.printf "%s" "Gen aAST..."; flush stdout;
+  let e = Generator.gen_ibop_ids_ast (int_of_string Sys.argv.(1)) "+" "x" in
+  let em = e in  
+  Printf.printf "%s" "Initial gamma..."; flush stdout;
+  let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
+  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty) in
+   Printf.printf "%s" "Initial typing..."; flush stdout;
+  let typed_aast = Typing.typecheck gamma_init e in
+   Printf.printf "%s" "Building the cache..."; flush stdout; let cache = Cache.build_cache typed_aast gamma_init in
+    (* ignore (Typing.typecheck gamma_init e); 
+    ignore (Typing.typecheck gamma_init_m em); 
+    ignore (IncrementalTyping.typecheck cache gamma_init_m em)  *)
+    Printf.printf "%s" "Search the cache..."; flush stdout;  (Cache.extract_cache (Hashing.extract_simple_hash em) cache)

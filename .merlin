@@ -3,6 +3,7 @@ S src
 S test
 
 PKG ounit
+PKG benchmark
 
 B _build/src
 B _build/test

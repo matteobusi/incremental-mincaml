@@ -1,6 +1,9 @@
 (* 
   MinCaml Annotated Abstract Syntax Tree (aAST)
 *)
+open Batteries
+open Varset
+
 type 'a t = 
   | Unit of 'a
   | Bool of bool * 'a
@@ -104,9 +107,9 @@ let string_of_annotast ppf_annot (e : 'a t) : string =
 (*
   Given an aAST, return the list of its free variables
 *)
-let rec free_variables e =
+let free_variables e =
   let list_remove l e = List.filter (fun x -> not (String.equal e x)) l in
-  match e with
+  let rec free_variables_list e = match e with
   | Unit(_)
   | Bool(_)
   | Int(_)
@@ -114,21 +117,21 @@ let rec free_variables e =
   | Var(x, _) -> [x]
   | Not(e1, _)
   | Neg(e1, _)
-  | FNeg(e1, _) -> free_variables e1
+  | FNeg(e1, _) -> free_variables_list e1
   | IBop(_, e1, e2, _)
   | FBop(_, e1, e2, _)
-  | Rel(_, e1, e2, _) -> List.append (free_variables e1) (free_variables e2)
-  | If(e1,e2,e3, _) -> List.append (List.append (free_variables e1) (free_variables e2)) (free_variables e3)
-  | Let(x, e1, e2, _) -> list_remove (List.append (free_variables e1) (free_variables e2)) x
+  | Rel(_, e1, e2, _) -> List.append (free_variables_list e1) (free_variables_list e2)
+  | If(e1,e2,e3, _) -> List.append (List.append (free_variables_list e1) (free_variables_list e2)) (free_variables_list e3)
+  | Let(x, e1, e2, _) -> list_remove (List.append (free_variables_list e1) (free_variables_list e2)) x
   | LetRec ({ name = (x, t); args = yts; body = e1 }, e2, _) -> 
-    List.fold_left list_remove (List.append (free_variables e1) (free_variables e2)) (x::(List.map fst yts))
-  | App (e1, es, _) -> List.append (free_variables e1) (List.concat (List.map free_variables es))
-  | Tuple(es, _) -> List.concat (List.map free_variables es)
-  | LetTuple(xs, e1, e2, _) -> List.fold_left list_remove (List.append (free_variables e1) (free_variables e2)) xs
-  | Array(e1, e2, _) -> List.append (free_variables e1) (free_variables e2)
-  | Get (e1, e2, _) -> List.append (free_variables e1) (free_variables e2)
-  | Put (e1, e2, e3, _) ->  List.append (free_variables e1) (List.append (free_variables e2) (free_variables e3))
-
+    List.fold_left list_remove (List.append (free_variables_list e1) (free_variables_list e2)) (x::(List.map fst yts))
+  | App (e1, es, _) -> List.append (free_variables_list e1) (List.concat (List.map free_variables_list es))
+  | Tuple(es, _) -> List.concat (List.map free_variables_list es)
+  | LetTuple(xs, e1, e2, _) -> List.fold_left list_remove (List.append (free_variables_list e1) (free_variables_list e2)) xs
+  | Array(e1, e2, _) -> List.append (free_variables_list e1) (free_variables_list e2)
+  | Get (e1, e2, _) -> List.append (free_variables_list e1) (free_variables_list e2)
+  | Put (e1, e2, e3, _) ->  List.append (free_variables_list e1) (List.append (free_variables_list e2) (free_variables_list e3))
+  in VarSet.of_list(free_variables_list e)
 (*
   Given an aAST compute the number of its nodes
 *)

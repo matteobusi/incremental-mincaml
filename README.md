@@ -11,6 +11,7 @@ The project requires:
 - [OCaml >= 4.06.1](http://www.ocaml.org/) standard compilers and tools
 - [Ounit/OUnit2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library. 
 - [Nearley](https://github.com/kach/nearley) Parser generator with unparsing function.
+- [Batteries] OCaml alternative standard library.
 ## Building the project #
 Typing `make` will generate a `main.byte` executable, that you can run to try the incremental typechecker:
 ```
@@ -42,7 +43,7 @@ Type: unit - IType: unit
 [Visited: 8/20] H: 5 - M: 0 (I) + 3 (NF) = 3
 ```
 meaning that ``fact_opt.ml`` was type checked incrementally as ``unit`` (``IType: unit``) starting from the original typing information of ``fact.ml``.
-To do that the incremental algorithm 8 nodes of the syntax tree (on a total of 20), finding the needed typing information directly in the cache for 5 times and not finding it for 3 times (0 because of incompatible typing environment and 3 because they were never cached).
+To do that the incremental algorithm 8 nodes of the syntax tree (on a total of 20), finding the needed typing information directly in the TypingCache for 5 times and not finding it for 3 times (0 because of incompatible typing environment and 3 because they were never TypingCached).
 
 ## Running the test #
 To run the tests, simply compile the `test.byte` file:
@@ -59,7 +60,7 @@ $ ./test.byte
 Here is a description of content of the repository
 
      src/                 <-- source code lives here
-     test/	              <-- unit test for code implementing the cache and the incremental type checker
+     test/	              <-- unit test for code implementing the TypingCache and the incremental type checker
      examples/            <-- small MinCaml programs
 
      Makefile             <-- Driver for `make` (uses OCB)
@@ -71,7 +72,7 @@ Here is a description of content of the repository
 The `src/` directory defines:
 
      annotast.ml          <-- the annotated abstrac syntax tree
-     cache.ml             <-- the cache for incremental type checking
+     TypingCache.ml             <-- the TypingCache for incremental type checking
      incrementaltyping.ml <-- the actual incremental type checker obtained according to the method in [1]
      typing.ml            <-- the original type checking algorithm
 
@@ -81,5 +82,5 @@ The `src/` directory defines:
 ### TODOS #
 - Incremental type inference
 - Nameless implementation
-- More efficient representation of caches
+- More efficient representation of TypingCaches
 - Other analyses

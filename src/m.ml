@@ -1,12 +1,18 @@
 (* customized version of Map *)
-module M =
-  Map.Make
-    (struct
-      type t = Id.t
-      let compare = compare
-    end)
-include M
+open Batteries
+open Varset
 
-let add_list xys env = List.fold_left (fun env (x, y) -> add x y env) env xys
-let add_list2 xs ys env = List.fold_left2 (fun env x y -> add x y env) env xs ys
-let restrict gamma e = let fv = Annotast.free_variables e in M.filter (fun k _ -> List.mem k fv) gamma
+module M =
+struct
+  include Map.Make 
+      (struct
+        type t = Id.t
+        let compare = compare
+      end)
+
+  let add_list xys env = List.fold_left (fun env (x, y) -> add x y env) env xys
+  let add_list2 xs ys env = List.fold_left2 (fun env x y -> add x y env) env xs ys
+  let restrict gamma e = let fv = Annotast.free_variables e in filter (fun k _ -> VarSet.mem k fv) gamma
+  let restrict_varset gamma fv = filter (fun k _ -> VarSet.mem k fv) gamma
+
+end
