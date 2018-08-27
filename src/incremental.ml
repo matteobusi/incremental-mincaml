@@ -25,11 +25,10 @@ let report = IncrementalReport.create ()
 let rec typecheck cache env e =
   let compat_env env envp e = 
     let fv = Annotast.free_variables e in 
-  (*  let env_res = M.restrict_varset env fv in 
-    let envp_res = M.restrict_varset envp fv in
-      if M.equal (=) env_res envp_res then (VarSet.cardinal fv = M.cardinal envp_res) 
-      else false *)
-  (* Baseline: *) (VarSet.for_all (fun e -> M.mem e env && M.mem e envp && (M.find e env) = (M.find e envp)) fv)
+    (* Baseline: VarSet.for_all (fun e -> M.mem e env && M.mem e envp && (M.find e env) = (M.find e envp)) fv *)
+    (* We do not need to compare envs restricted to free vars because we know that they're already "minimal" *)
+    if M.equal (=) env envp then VarSet.cardinal fv = M.cardinal env 
+    else false
   and cache_res = (Cache.extract_cache (Hashing.extract_simple_hash e) cache) in
   match cache_res with
   | None ->  (* Not found in cache *)

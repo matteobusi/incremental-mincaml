@@ -15,6 +15,7 @@ module Cache =
   let extract_cache h cache = (let find_opt h cache = (try Some(Map.find h cache) with Not_found -> None) in find_opt h cache)
   let update_cache e gamma tau cache = Map.add (Hashing.extract_simple_hash e) (M.restrict gamma e, tau)
 
+  let empty = Map.empty
   let add = Map.add
   let union = Map.union
   let find = Map.find
