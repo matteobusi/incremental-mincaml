@@ -22,13 +22,13 @@ let benchmark e em =
   let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty) in
   (* These are just to avoid multiple recomputations *)
   let typed_aast = Typing.typecheck gamma_init e in
-  let cache0, cache1 = Cache.create_empty 100, Cache.create_empty 100 in
+  let cache0, cache1 = Cache.create_empty 100, Cache.create_empty 100 in (* TODO: fix the initial size of the cache to be big enough *)
   Cache.build_cache typed_aast gamma_init cache0;
   [
       Bench.Test.create ~name:"TE" (fun () -> ignore (Typing.typecheck gamma_init e));
       Bench.Test.create ~name:"TEM" (fun () -> ignore (Typing.typecheck gamma_init_m em));
       Bench.Test.create ~name:"ITEM" (fun () -> ignore (IncrementalTyping.typecheck cache0 gamma_init_m em));
-      Bench.Test.create ~name:"EITEM" (fun () -> ignore (IncrementalTyping.typecheck cache1 gamma_init_m em)); (* Utterly slow! *)
+      Bench.Test.create ~name:"EITEM" (fun () -> ignore (Cache.clear cache1; IncrementalTyping.typecheck cache1 gamma_init_m em));
   ] |> Bench.make_command |> Core.Command.run
   (* let benchmark_result = Benchmark.latencyN ~repeat:1 10000L [
     ("TE", (fun () -> ignore (Typing.typecheck gamma_init e)), ()); 
