@@ -26,3 +26,10 @@ let gen_ibop_ids_ast h ibop id =
       let hash = Hashing.combine_hashes [ Hashing.compute_hash ibop; Hashing.extract_simple_hash laast; Hashing.extract_simple_hash raast] in
       Annotast.IBop(ibop, laast, raast, hash) in 
   aux h ibop id
+
+(*
+  Takes the tree t and a st and substitutes st in t at the given depth d in place of the rightmost child
+*)
+let transform_aast t st d = 
+  let rm_subst t st = () in 
+    ()
