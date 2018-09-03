@@ -132,6 +132,7 @@ let free_variables e =
   | Get (e1, e2, _) -> List.append (free_variables_list e1) (free_variables_list e2)
   | Put (e1, e2, e3, _) ->  List.append (free_variables_list e1) (List.append (free_variables_list e2) (free_variables_list e3))
   in VarSet.of_list(free_variables_list e)
+
 (*
   Given an aAST compute the number of its nodes
 *)

@@ -38,7 +38,7 @@ let _ =
   else
     Printf.eprintf "Usage:\n %s file1.ml file2.ml\n" Sys.argv.(0) *)
      Printf.printf "%s" "Gen aAST..."; flush stdout;
-  let e = Generator.gen_ibop_ids_ast (int_of_string Sys.argv.(1)) "+" "x" in
+  let e = Generator.gen_ibop_ids_ast (int_of_string Sys.argv.(1)) "+" 10 in
   let em = e in  
   Printf.printf "%s" "Initial gamma..."; flush stdout;
   let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in

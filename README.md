@@ -88,13 +88,17 @@ The `src/` directory defines:
 ## Useful benchmarks #
 
 ### To simulate code modifications 
-- Same aAST (i.e. no modifications) - from depth d \in 2, 4, ..., 20
-- To simulate code addition, simply invalidate the cache from certain depth of the tree 
-- To simulate code motion simply swap two subtrees
-- To simulate code deletion simply delete a subtree and substitute it with a smaller one or a leaf
-- ??
+- All this with same variables (high reuse of cached results) and with a limited number of variables (e.g. linear in depth, exp in depth, ...)
+    * Same aAST (i.e. no modifications) - from depth d \in 2, 4, 8, 16, 20
+    * To simulate code addition, simply invalidate the cache from a certain depth of the tree 
+    * To simulate code motion simply swap two subtrees
+    * To simulate code elimination simply delete a subtree and substitute it with a smaller one or a leaf
+    * ??
 
 ### To test caches
-- Start with an empty cache (e.g. first time you see the whole tree); This is the "first time" see
+- Start with an empty cache (e.g. first time you see the whole tree)
 - Analyse with non-empty cache, but limited and see what happens
 - ??
+
+### Incremental vs. TEM the first time (emtpy cache)
+- Changing the number of free variables changes the times

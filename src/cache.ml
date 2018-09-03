@@ -15,7 +15,7 @@ include Hashtbl.Make(struct
           let hash i = i land max_int
         end)
 
-let create_empty n = copy (create n)
+let create_empty n = create n
 
 let extract_cache h cache = find_option cache h
 (* let add h gamma tau cache = add cache h (gamma, tau) *)

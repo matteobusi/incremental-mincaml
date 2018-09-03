@@ -1,10 +1,10 @@
 open OUnit2
 
 open Annotast
-open Cache
 open M
 open Incremental
 open Typing
+open Cache
 
 let external_signatures = [
   "print_int" ,     Type.Fun([Type.Int], Type.Unit) ;
@@ -68,7 +68,9 @@ let analyzeExpr (file : string) =
   let e = Parser.exp Lexer.token lexbuf in
   let gamma_init = (M.add_list external_signatures M.empty) in  
   let te = Typing.typecheck gamma_init e in
-  let cache = Cache.build_cache te gamma_init in (te, cache)
+  let cache = Cache.create_empty 100 in
+  Cache.build_cache te gamma_init cache;
+  (te, cache)
 
 let analyze_and_report (file : string) (filem : string) =
   let channel, channelm = open_in file, open_in filem in
@@ -79,17 +81,19 @@ let analyze_and_report (file : string) (filem : string) =
   let em = Parser.exp Lexer.token lexbufm in
   let gamma_init = (M.add_list external_signatures M.empty) in
   let te, tem = Typing.typecheck gamma_init e, Typing.typecheck gamma_init em in (* tem computed just to compare the results! *)
-  let cache = Cache.build_cache te gamma_init in 
+  let cache = Cache.create_empty 100 in
+  Cache.build_cache te gamma_init cache;
   IncrementalReport.reset IncrementalTyping.report;
   IncrementalReport.set_nc (nodecount tem) IncrementalTyping.report;
+  Cache.clear cache;
   let inctem = IncrementalTyping.typecheck cache gamma_init em in (*Analyse the modified program *)
   Printf.printf "[%s v. %s] - %s\n" file filem (IncrementalReport.string_of_report IncrementalTyping.report);       
-  (Typing.extract_type tem, fst inctem)
+  (Typing.extract_type tem, inctem)
 
 let check_cache_result file = let (te, cache) = analyzeExpr file in
   let annot_list = build_annot_list te in
   (* Check the typing. TODO: check the context *)
-  assert_bool ("[Cache] Failed: " ^ file) ((List.for_all (fun (hash, tau) -> (snd (Cache.find hash cache)) = tau) annot_list))
+  assert_bool ("[Cache] Failed: " ^ file) ((List.for_all (fun (hash, tau) -> (snd (Cache.find cache hash)) = tau) annot_list))
 
 let check_incremental_result fileo filem = let res = analyze_and_report fileo filem in assert_equal (fst res) (snd res)
 
