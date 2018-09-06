@@ -26,28 +26,7 @@ module Typing = struct
     with Invalid_argument(_) -> raise (TypeError(t1, t2))
     in ignore(check_iter t1 t2)
 
-  let extract_type e : Type.t =
-    match e with
-    | Unit(_,type_t)
-    | Bool(_,(_,type_t))
-    | Int(_, (_, type_t))
-    | Float(_,(_,type_t))
-    | Not(_, (_, type_t))
-    | Var(_, (_, type_t))
-    | Neg(_, (_, type_t))
-    | FNeg(_, (_, type_t))
-    | IBop(_,_,_,(_,type_t))
-    | FBop(_,_,_,(_,type_t))
-    | Rel(_,_,_,(_,type_t))
-    | If(_,_,_, (_,type_t))
-    | Let(_,_,_, (_,type_t))
-    | LetRec(_,_, (_,type_t))
-    | App(_,_,(_,type_t))
-    | Tuple(_,(_,type_t))
-    | LetTuple(_,_,_,(_,type_t))
-    | Array(_,_, (_,type_t))
-    | Get(_,_, (_,type_t))
-    | Put(_, _,_, (_,type_t))-> type_t
+  let extract_type e = snd (Annotast.get_annot e)
 
   let rec typecheck env e = (* *)
       match e with

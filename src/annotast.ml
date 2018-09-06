@@ -105,33 +105,33 @@ let string_of_annotast ppf_annot (e : 'a t) : string =
   Format.flush_str_formatter ()
 
 (*
-  Given an aAST, return the list of its free variables
+  Given an aAST, return a new aAST decorated with the set of free variables of its nodes
 *)
 let free_variables e =
-  let list_remove l e = List.filter (fun x -> not (String.equal e x)) l in
-  let rec free_variables_list e = match e with
-  | Unit(_)
-  | Bool(_)
-  | Int(_)
-  | Float(_) -> []
-  | Var(x, _) -> [x]
-  | Not(e1, _)
-  | Neg(e1, _)
-  | FNeg(e1, _) -> free_variables_list e1
-  | IBop(_, e1, e2, _)
-  | FBop(_, e1, e2, _)
-  | Rel(_, e1, e2, _) -> List.append (free_variables_list e1) (free_variables_list e2)
-  | If(e1,e2,e3, _) -> List.append (List.append (free_variables_list e1) (free_variables_list e2)) (free_variables_list e3)
-  | Let(x, e1, e2, _) -> list_remove (List.append (free_variables_list e1) (free_variables_list e2)) x
-  | LetRec ({ name = (x, t); args = yts; body = e1 }, e2, _) -> 
-    List.fold_left list_remove (List.append (free_variables_list e1) (free_variables_list e2)) (x::(List.map fst yts))
-  | App (e1, es, _) -> List.append (free_variables_list e1) (List.concat (List.map free_variables_list es))
-  | Tuple(es, _) -> List.concat (List.map free_variables_list es)
-  | LetTuple(xs, e1, e2, _) -> List.fold_left list_remove (List.append (free_variables_list e1) (free_variables_list e2)) xs
-  | Array(e1, e2, _) -> List.append (free_variables_list e1) (free_variables_list e2)
-  | Get (e1, e2, _) -> List.append (free_variables_list e1) (free_variables_list e2)
-  | Put (e1, e2, e3, _) ->  List.append (free_variables_list e1) (List.append (free_variables_list e2) (free_variables_list e3))
-  in VarSet.of_list(free_variables_list e)
+  let invRemove e s = VarSet.remove s e in
+  let rec free_variables_cps (e : 'a t) k : (('a * VarSet.t) t) = match e with
+    | Unit(a) -> k (Unit((a, VarSet.empty)))
+    | Bool(v, a)-> k (Bool(v, (a, VarSet.empty)))
+    | Int(v, a)-> k (Int(v, (a, VarSet.empty)))
+    | Float(v, a) -> k (Float(v, (a, VarSet.empty)))
+    | Var(x, a) -> k (Var(x, (a, VarSet.singleton x)))
+    | Not(e1, a) -> free_variables_cps e1 (fun r1 -> k (Not(r1, (a,  snd (get_annot r1)))))
+    | Neg(e1, a) -> free_variables_cps e1 (fun r1 -> k (Neg(r1, (a,  snd (get_annot r1)))))
+    | FNeg(e1, a) -> free_variables_cps e1 (fun r1 -> k (FNeg(r1, (a,  snd (get_annot r1)))))
+    | IBop(op, e1, e2, a) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (IBop(op, r1, r2, (a, VarSet.union ( snd (get_annot r1)) ( snd (get_annot r2)))))))
+    | FBop(op, e1, e2, a) ->  free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (FBop(op, r1, r2, (a, VarSet.union ( snd (get_annot r1)) ( snd (get_annot r2)))))))
+    | Rel(op, e1, e2, a) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (Rel(op, r1, r2, (a, VarSet.union ( snd (get_annot r1)) ( snd (get_annot r2)))))))
+    | If(e1, e2, e3, a) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> free_variables_cps e3 (fun r3 -> k (If(r1, r2, r3, (a, VarSet.union ( snd (get_annot r1)) (VarSet.union ( snd (get_annot r2)) ( snd (get_annot r3)))))))))
+    | Let(x, e1, e2, a) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (Let(x, r1, r2, (a, VarSet.remove x (VarSet.union ( snd (get_annot r1)) ( snd (get_annot r2))))))))
+    | LetRec ({ name = (x, t); args = yts; body = e1 }, e2, a) -> 
+      free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (LetRec({ name = (x, t); args = yts; body = r1 }, r2, (a, List.fold_left invRemove (VarSet.union ( snd (get_annot r1)) ( snd (get_annot r2))) (x::(List.map fst yts)))))))
+    | App (e1, es, a) -> free_variables_cps e1 (fun r1 -> k (let es_fv = List.map (fun e -> free_variables_cps e k) es in App(r1, es_fv, (a,(VarSet.union ( snd (get_annot r1)) (List.fold_left VarSet.union (VarSet.empty) (List.map (fun e -> snd (get_annot e)) es_fv)))))))
+    | Tuple(es, a) -> k (let es_fv = List.map (fun e -> free_variables_cps e k) es in Tuple(es_fv, (a, List.fold_left VarSet.union (VarSet.empty) (List.map (fun e -> snd (get_annot e)) es_fv))))
+    | LetTuple(xs, e1, e2, a) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (LetTuple(xs, r1, r2, (a, List.fold_left invRemove (VarSet.union ( snd (get_annot r1)) ( snd (get_annot r2))) xs)))))
+    | Array(e1, e2, a) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (Array(r1, r2, (a, VarSet.union ( snd (get_annot r1)) ( snd (get_annot r2)))))))
+    | Get (e1, e2, a) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (Get(r1, r2, (a, VarSet.union ( snd (get_annot r1)) ( snd (get_annot r2)))))))
+    | Put (e1, e2, e3, a) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> free_variables_cps e3 (fun r3 -> k (Put(r1, r2, r3,(a, (VarSet.union ( snd (get_annot r1)) (VarSet.union ( snd (get_annot r2)) ( snd (get_annot r3))))))))))
+  in free_variables_cps e (fun d -> d)
 
 (*
   Given an aAST compute the number of its nodes

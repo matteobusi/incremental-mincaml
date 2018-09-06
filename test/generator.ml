@@ -2,7 +2,7 @@ open Annotast
 open Hashing
 
 (*
-  Generate a balanced aAST of the specified depth (0 means just the root) whose nodes are ibop and leaves are all identical to id
+  Generate a balanced aAST of the specified depth (1 means just the root) whose nodes are ibop and leaves are all identical to id
 *)
 let rec gen_ibop_id_ast h ibop id = 
   match h with
@@ -15,7 +15,7 @@ let rec gen_ibop_id_ast h ibop id =
     Annotast.IBop(ibop, laast, raast, hash)
 
 (*
-  Generate a balanced aAST of the specified depth (0 means just the root) whose nodes are ibop and with k 
+  Generate a balanced aAST of the specified depth (1 means just the root) whose nodes are ibop and with k 
 *)
 let gen_ibop_ids_ast h ibop k = 
   let counter = ref 0 in

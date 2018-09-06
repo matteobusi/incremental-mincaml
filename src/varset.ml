@@ -6,6 +6,6 @@ struct
   include Set.Make 
       (struct
         type t = Id.t
-        let compare = compare
+        let compare = String.compare
       end)
 end
