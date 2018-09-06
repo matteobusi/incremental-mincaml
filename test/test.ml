@@ -5,6 +5,8 @@ open M
 open Incremental
 open Typing
 open Cache
+open Varset
+open Generator
 
 let external_signatures = [
   "print_int" ,     Type.Fun([Type.Int], Type.Unit) ;
@@ -85,7 +87,6 @@ let analyze_and_report (file : string) (filem : string) =
   Cache.build_cache te gamma_init cache;
   IncrementalReport.reset IncrementalTyping.report;
   IncrementalReport.set_nc (nodecount tem) IncrementalTyping.report;
-  Cache.clear cache;
   let inctem = IncrementalTyping.typecheck cache gamma_init em in (*Analyse the modified program *)
   Printf.printf "[%s v. %s] - %s\n" file filem (IncrementalReport.string_of_report IncrementalTyping.report);       
   (Typing.extract_type tem, inctem)
@@ -94,6 +95,39 @@ let check_cache_result file = let (te, cache) = analyzeExpr file in
   let annot_list = build_annot_list te in
   (* Check the typing. TODO: check the context *)
   assert_bool ("[Cache] Failed: " ^ file) ((List.for_all (fun (hash, tau) -> (snd (Cache.find cache hash)) = tau) annot_list))
+
+let run fv_c depth = 
+  (* Fill up the initial gamma with needed identifiers *)
+  let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
+  let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
+  (* These are just to avoid multiple recomputations *)
+  let typed_e = Typing.typecheck gamma_init e in
+  let init_sz = M.cardinal gamma_init in
+  let full_cache = Cache.copy (Cache.create_empty init_sz) in
+  Cache.build_cache typed_e gamma_init full_cache;
+  IncrementalReport.reset IncrementalTyping.report;
+  IncrementalReport.set_nc (nodecount e) IncrementalTyping.report;
+  ignore (IncrementalTyping.typecheck full_cache gamma_init e); (*Analyse the modified program *)
+  Printf.printf "transf=id; fv_c=%d; depth=%d - %s\n\n" fv_c depth (IncrementalReport.string_of_report IncrementalTyping.report)  
+
+let run_add fv_c depth inv_depth = 
+  (* Fill up the initial gamma with needed identifiers *)
+  let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
+  let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
+  (* These are just to avoid multiple recomputations *)
+  let typed_e = Typing.typecheck gamma_init e in
+  let init_sz = M.cardinal gamma_init in
+  let full_cache = Cache.create_empty init_sz in
+  (* Build the full cache for e *)
+  Cache.build_cache typed_e gamma_init full_cache;
+  (* Invalidate part of the cache, corresponding to the rightmost subtree of depth tree_depth - d; This simulates addition of code. *)
+  Generator.invalidate_rsubast full_cache e inv_depth;
+  IncrementalReport.reset IncrementalTyping.report;
+  IncrementalReport.set_nc (nodecount e) IncrementalTyping.report;
+  ignore (IncrementalTyping.typecheck full_cache gamma_init e); (*Analyse the modified program *)
+  Printf.printf "transf=add; fv_c=%d; depth=%d; inv_depth=%d - %s\n\n" fv_c depth inv_depth (IncrementalReport.string_of_report IncrementalTyping.report)
 
 let check_incremental_result fileo filem = let res = analyze_and_report fileo filem in assert_equal (fst res) (snd res)
 
@@ -119,10 +153,18 @@ let test_incr = "Test: Incremental TC">:::
     "array-avg.ml - array-avg-ii.ml">::(fun _ -> check_incremental_result "examples/array-avg.ml" "examples/array-avg-ii.ml" );
   ]
 
+let test_autogen = "Test: generated AST + transformed">:::
+  [
+    "id1">::(fun _ -> run 8 8);
+    "id2">::(fun _ -> run 128 8);
+    "add1">::(fun _ -> run_add 8 8 1);
+    "add2">::(fun _ -> run_add 128 8 3);
+  ]
+
 (* Test Runner; ~verbose:true gives info on succ tests *)
 let _ = 
   (* run_test_tt_main test_cache;  *)
-  run_test_tt_main test_incr;
+  run_test_tt_main test_autogen;
 
 (*
 

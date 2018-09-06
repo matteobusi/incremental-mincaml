@@ -9,40 +9,25 @@ open Incremental
 open Typing
 open Varset
 
-(* Invalidate the entries corresponding to the rightmost subtree at depth d (0 for the root) in e  *)
-let rec invalidate_rsubast cache e d = 
-  let rec invalidate_cache cache e = 
-    Cache.remove cache (Annotast.get_annot e);
-    match e with (* Restricted to IBop and Var*)
-    | Var(id, _) -> ()
-    | IBop(op, l, r, _) -> invalidate_cache cache r
-    | _ -> failwith "invalidate_cache: unsupported aAST."
-  in
-  match (e, d) with
-  | (_, 0) -> invalidate_cache cache e
-  | (Var(_, _), _) -> failwith "get_r_subaast: d is too big!"
-  | (IBop(_, _, r, _), _) ->  Cache.remove cache (Annotast.get_annot e); invalidate_rsubast cache r (d-1)
-  | _ -> failwith "get_r_subaast: unsupported aAST."
-
 let bench_original_vs_inc e repeat time = 
   (* Fill up the initial gamma with needed identifiers *)
-  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (snd (Annotast.get_annot (Annotast.free_variables e))))) in
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
   let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
   (* These are just to avoid multiple recomputations *)
   let typed_e = Typing.typecheck gamma_init e in
   let init_sz = M.cardinal gamma_init in
-  let empty_cache = Cache.copy (Cache.create_empty init_sz) in
+  let empty_cache = Cache.create_empty init_sz in
   let full_cache = Cache.copy (Cache.create_empty init_sz) in
   Cache.build_cache typed_e gamma_init full_cache;
   Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
-    ("Origin", (fun c -> ignore (Typing.typecheck gamma_init e)), (Cache.create_empty init_sz));
-    ("CacInc", (fun c -> ignore (IncrementalTyping.typecheck c gamma_init e)), (Cache.copy full_cache));
-    ("EmpInc", (fun c -> ignore (Cache.clear empty_cache; IncrementalTyping.typecheck c gamma_init e)), (Cache.clear empty_cache; empty_cache))
+    ("Origin", (fun () -> ignore (Typing.typecheck gamma_init e)), ());
+    ("CacInc", (fun () -> ignore (IncrementalTyping.typecheck full_cache gamma_init e)), ());
+    ("EmpInc", (fun () -> ignore (Cache.clear empty_cache; IncrementalTyping.typecheck empty_cache gamma_init e)), ())
   ] 
 
 let bench_original_vs_incr_add e d repeat time = 
   (* Fill up the initial gamma with needed identifiers *)
-  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (snd (Annotast.get_annot (Annotast.free_variables e))))) in
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
   let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
   (* These are just to avoid multiple recomputations *)
   let typed_e = Typing.typecheck gamma_init e in
@@ -53,8 +38,8 @@ let bench_original_vs_incr_add e d repeat time =
   (* Invalidate part of the cache, corresponding to the rightmost subtree of depth tree_depth - d; This simulates addition of code. *)
   invalidate_rsubast full_cache e d;
   Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
-    ("Origin", (fun c -> ignore (Typing.typecheck gamma_init e)), (Cache.create_empty init_sz));
-    ("CacInc", (fun c -> ignore (invalidate_rsubast c e d; IncrementalTyping.typecheck c gamma_init e)), (Cache.copy full_cache));
+    ("Origin", (fun () -> ignore (Typing.typecheck gamma_init e)), ());
+    ("CacInc", (fun () -> ignore (invalidate_rsubast full_cache e d; IncrementalTyping.typecheck full_cache gamma_init e)), ());
   ] 
 
 let bench_original_vs_incr_elim e d repeat time = ()
