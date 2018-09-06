@@ -22,7 +22,7 @@ let bench_original_vs_inc e repeat time =
   Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
     ("Origin", (fun () -> ignore (Typing.typecheck gamma_init e)), ());
     ("CacInc", (fun () -> ignore (IncrementalTyping.typecheck full_cache gamma_init e)), ());
-    ("EmpInc", (fun () -> ignore (Cache.clear empty_cache; IncrementalTyping.typecheck empty_cache gamma_init e)), ())
+    ("EmpInc", (fun () -> ignore (Cache.clear empty_cache; assert (Cache.is_empty empty_cache); IncrementalTyping.typecheck empty_cache gamma_init e)), ())
   ] 
 
 let bench_original_vs_incr_add e d repeat time = 
@@ -44,21 +44,38 @@ let bench_original_vs_incr_add e d repeat time =
 
 let bench_original_vs_incr_elim e d repeat time = ()
 
+let gen_list min max next = 
+  let rec gen_aux curr = 
+    if curr >= max then [max] else curr :: (gen_aux (next curr))
+  in gen_aux min
+
+let rec cartesian a b = match b with
+| [] -> []
+| be :: bs ->  (List.map (fun ae -> (be, ae)) a) @ (cartesian a bs)
+
 let _ = 
   (* Printf.printf "repeat, time, fvc, depth, name, rate\n"; *)
   let repeat, time = 1, 2 in
-  let param_list = [(16, 16); (32768, 16)] in
+  let max_depth = 16 in
+  let depth_list = gen_list 8 max_depth (fun n -> n+2) in 
+  let fc_c_list = gen_list 1 (BatInt.pow 2 (max_depth-1)) (fun n -> n*2) in
+  let inv_depth = gen_list 1 max_depth (fun n -> n*2) in
+  let param_list_id = cartesian depth_list fc_c_list in
+  let param_list_add = cartesian param_list_id inv_depth in
     (* Original typing algorithm vs. Incremental w full cache & no mofications vs. Incremental w empty cache *)
     List.iter (fun (fv_c, depth) -> (
-      Printf.printf "transf=id; fv_c=%d; depth=%d\n" fv_c depth;
-      let e = Generator.gen_ibop_ids_ast depth "+" fv_c in 
-      (bench_original_vs_inc e repeat time) |> Benchmark.tabulate)) param_list;
+      if fv_c <= (BatInt.pow 2 (max_depth-1)) then (
+        Printf.printf "transf=id; fv_c=%d; depth=%d\n" fv_c depth;
+        let e = Generator.gen_ibop_ids_ast depth "+" fv_c in (bench_original_vs_inc e repeat time) |> Benchmark.tabulate)
+      else ()
+      )) param_list_id;
     (* (Simulated) code addition: full re-typing vs. incremental w full cache *)
-    List.iter (fun (fv_c, depth) -> (
-      let inv_depth = depth/3 in
-      Printf.printf "transf=add; fv_c=%d; depth=%d; inv_depth=%d\n" fv_c depth inv_depth;
-      let e = Generator.gen_ibop_ids_ast depth "+" fv_c in 
-      (bench_original_vs_incr_add e inv_depth repeat time) |> Benchmark.tabulate)) param_list;
+    List.iter (fun (inv_depth, (fv_c, depth)) -> (
+      if fv_c <= (BatInt.pow 2 (max_depth-1)) && inv_depth <= depth then (
+        Printf.printf "transf=add; fv_c=%d; depth=%d; inv_depth=%d\n" fv_c depth inv_depth;
+        let e = Generator.gen_ibop_ids_ast depth "+" fv_c in (bench_original_vs_incr_add e inv_depth repeat time) |> Benchmark.tabulate)
+      else ()
+      )) param_list_add;
     (* Code elimination: full re-typing vs. incremental w full cache *)
 
     

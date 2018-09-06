@@ -25,13 +25,15 @@ let report = IncrementalReport.create ()
 let rec typecheck cache env e =
     let compat_env env envp e =
       (* Baseline: *)
-      (* let fv = Annotast.free_variables e in VarSet.for_all (fun e -> M.mem e env && M.mem e envp && (M.find e env) = (M.find e envp)) fv *)
+      if M.equal (=) env envp then true
+      else 
+        let fv = Annotast.free_variables e in VarSet.for_all (fun e -> M.mem e env && M.mem e envp && (M.find e env) = (M.find e envp)) fv
       (* 
         compat_env is called on cache hits, i.e. we know that e is the same to the one in cache; 
         Then, we know that we can type it with env given it was in cache; 
         Since env was also minimal, we know that envp must be equal to env to be sure that we can type e. 
       *)
-      M.equal (=) env envp
+      (* M.equal (=) env envp *)
     and cache_res = (Cache.extract_cache (Hashing.extract_simple_hash e) cache) in
     match cache_res with
     | None ->  (* Not found in cache *)
@@ -41,7 +43,8 @@ let rec typecheck cache env e =
       IncrementalReport.register_miss_incomp report; 
       cache_miss_itc env cache e
     | Some (gamma_cand, tau_cand) -> IncrementalReport.register_hit report; tau_cand
-  and cache_miss_itc gammao cache e = let gamma = M.restrict gammao (free_variables e) in (* Calling this produces a type and MODIFIES cache *)
+  and cache_miss_itc gammao cache e = 
+    let gamma = gammao in (*FIXME:  M.restrict env (Annotast.free_variables e) *)
     match e with
     | Unit(hash) -> Type.Unit
     | Bool(_, hash) -> Type.Bool

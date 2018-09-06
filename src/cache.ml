@@ -38,7 +38,7 @@ let rec print_cache c =
   Cache initially an empty MUTABLE Cache. 
 *)
 let rec build_cache e env cache =
-    let gamma = M.restrict env (Annotast.free_variables e) in 
+    let gamma = env in (*FIXME:  M.restrict env (Annotast.free_variables e) *)
     match e with
     | Unit((hash, tau)) -> add cache hash (gamma, tau)
     | Bool(_, (hash, tau))

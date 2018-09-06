@@ -107,9 +107,9 @@ let string_of_annotast ppf_annot (e : 'a t) : string =
 (*
   Given an aAST, return a new aAST decorated with the set of free variables of its nodes
 *)
-let free_variables = 
-  let invRemove e s = VarSet.remove s e in
-  let rec free_variables_cps e k = match e with
+let rec free_variables_cps e k = 
+  let invRemove e s = VarSet.remove s e in 
+  match e with
     | Unit(_)
     | Bool(_)
     | Int(_)
@@ -131,7 +131,8 @@ let free_variables =
     | Array(e1, e2, _) 
     | Get (e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (VarSet.union r1 r2)))
     | Put (e1, e2, e3, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> free_variables_cps e3 (fun r3 -> k (VarSet.union r1 (VarSet.union r2 r3)))))
-  in free_variables_cps e (fun d -> d)
+and
+free_variables e = free_variables_cps e (fun d -> d)
 
 (*
   Given an aAST compute the number of its nodes

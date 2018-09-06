@@ -165,6 +165,7 @@ let test_autogen = "Test: generated AST + transformed">:::
 let _ = 
   (* run_test_tt_main test_cache;  *)
   run_test_tt_main test_autogen;
+  run_test_tt_main test_incr;
 
 (*
 
