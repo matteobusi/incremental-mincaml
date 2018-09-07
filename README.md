@@ -9,9 +9,10 @@ described in ``Using Standard Typing Algorithms Incrementally''.
 The project requires:
 
 - [OCaml >= 4.06.1](http://www.ocaml.org/) standard compilers and tools
-- [Ounit/OUnit2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library. 
-- [Nearley](https://github.com/kach/nearley) Parser generator with unparsing function.
-- [Batteries] OCaml alternative standard library.
+- [Ounit/OUnit2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library.
+- [Batteries](http://batteries.forge.ocamlcore.org/) OCaml alternative standard library.
+- [Benchmakr](http://ocaml-benchmark.forge.ocamlcore.org/) OCaml library for benchmarking.
+
 ## Building the project #
 Typing `make` will generate a `main.byte` executable, that you can run to try the incremental typechecker:
 ```
@@ -21,6 +22,11 @@ $ make
 To clean-up the folder, run:
 ```
 $ make clean
+```
+
+To build the benchmarks, run:
+```
+$ make tbenchmark
 ```
 
 ## Running #
@@ -46,13 +52,24 @@ meaning that ``fact_opt.ml`` was type checked incrementally as ``unit`` (``IType
 To do that the incremental algorithm 8 nodes of the syntax tree (on a total of 20), finding the needed typing information directly in the TypingCache for 5 times and not finding it for 3 times (0 because of incompatible typing environment and 3 because they were never TypingCached).
 
 ## Running the test #
-To run the tests, simply compile the `test.byte` file:
+To run the tests, simply compile the `test.ml` file:
 ```
 $ make test
 ```
-and run it:
+and run the executable:
 ```
 $ ./test.byte
+```
+
+## Running the benchmarks #
+
+To build the benchmarks, simply compile `tbenchmark.ml` file:
+```
+$ make tbenchmark
+```
+and run the executable:
+```
+$ ./tbenchmark.native
 ```
 
 ## Project structure #
@@ -72,8 +89,8 @@ Here is a description of content of the repository
 The `src/` directory defines:
 
      annotast.ml          <-- the annotated abstrac syntax tree
-     TypingCache.ml             <-- the TypingCache for incremental type checking
-     incrementaltyping.ml <-- the actual incremental type checker obtained according to the method in [1]
+     cache.ml             <-- the TypingCache for incremental type checking
+     incremental.ml <-- the actual incremental type checker obtained according to the method in [1]
      typing.ml            <-- the original type checking algorithm
 
 ## Known issues (to solve in future versions) #
@@ -84,21 +101,3 @@ The `src/` directory defines:
 - Nameless implementation
 - More efficient representation of TypingCaches
 - Other analyses
-
-## Useful benchmarks #
-
-### To simulate code modifications 
-- All this with same variables (high reuse of cached results) and with a limited number of variables (e.g. linear in depth, exp in depth, ...)
-    * Same aAST (i.e. no modifications) - from depth d \in 2, 4, 8, 16, 20
-    * To simulate code addition, simply invalidate the cache from a certain depth of the tree 
-    * To simulate code motion simply swap two subtrees
-    * To simulate code elimination simply delete a subtree and substitute it with a smaller one or a leaf
-    * ??
-
-### To test caches
-- Start with an empty cache (e.g. first time you see the whole tree)
-- Analyse with non-empty cache, but limited and see what happens
-- ??
-
-### Incremental vs. TEM the first time (emtpy cache)
-- Changing the number of free variables changes the times

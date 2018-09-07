@@ -18,6 +18,9 @@ test: default
 tbenchmark: default 
 	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,benchmark $@.native
 
+test_prof: default
+	ocamlbuild ocamlopt -tag -p thread -use-ocamlfind -pkg batteries,benchmark test.native
+
 all: native test tbenchmark
 
 clean:
