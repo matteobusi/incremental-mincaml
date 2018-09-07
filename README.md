@@ -11,7 +11,7 @@ The project requires:
 - [OCaml >= 4.06.1](http://www.ocaml.org/) standard compilers and tools
 - [Ounit/OUnit2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library.
 - [Batteries](http://batteries.forge.ocamlcore.org/) OCaml alternative standard library.
-- [Benchmakr](http://ocaml-benchmark.forge.ocamlcore.org/) OCaml library for benchmarking.
+- [Benchmark](http://ocaml-benchmark.forge.ocamlcore.org/) OCaml library for benchmarking.
 
 ## Building the project #
 Typing `make` will generate a `main.byte` executable, that you can run to try the incremental typechecker:
