@@ -129,6 +129,46 @@ let run_add fv_c depth inv_depth =
   ignore (IncrementalTyping.typecheck full_cache gamma_init e); (*Analyse the modified program *)
   Printf.printf "transf=add; fv_c=%d; depth=%d; inv_depth=%d - %s\n\n" fv_c depth inv_depth (IncrementalReport.string_of_report IncrementalTyping.report)
 
+let run_elim fv_c depth inv_depth = 
+  let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
+  (* Fill up the initial gamma with needed identifiers *)
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
+  let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
+  (* These are just to avoid multiple recomputations *)
+  let typed_e = Typing.typecheck gamma_init e in
+  let init_sz = M.cardinal gamma_init in
+  let full_cache = Cache.create_empty init_sz in
+  (* Build the full cache for e *)
+  Cache.build_cache typed_e gamma_init full_cache;
+  (* The modified program: eliminate the rightmost subtree at depth d by substituting it with a constant leaf *)
+  let em = tree_subst_rm e inv_depth (Annotast.Int(42, Hashing.compute_hash 42)) in 
+  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty) in
+  IncrementalReport.reset IncrementalTyping.report;
+  IncrementalReport.set_nc (nodecount em) IncrementalTyping.report;
+  ignore (IncrementalTyping.typecheck full_cache gamma_init_m em); (* Analyse the modified program *)
+  Printf.printf "transf=elim; fv_c=%d; depth=%d; inv_depth=%d - %s\n\n" fv_c depth inv_depth (IncrementalReport.string_of_report IncrementalTyping.report)
+
+let run_move fv_c depth inv_depth = 
+  let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
+  let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
+  (* These are just to avoid multiple recomputations *)
+  let typed_e = Typing.typecheck gamma_init e in
+  let init_sz = M.cardinal gamma_init in
+  let full_cache = Cache.create_empty init_sz in
+  (* Build the full cache for e *)
+  Cache.build_cache typed_e gamma_init full_cache;
+  (* The modified program: swap the two subtrees *)
+  let rm_tree = get_rm e inv_depth in 
+  let lm_tree = get_lm e (inv_depth + 1) in
+  let em' = tree_subst_rm e inv_depth lm_tree in 
+  let em = tree_subst_lm em' (inv_depth+1) rm_tree in
+  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty) in
+  IncrementalReport.reset IncrementalTyping.report;
+  IncrementalReport.set_nc (nodecount em) IncrementalTyping.report;
+  ignore (IncrementalTyping.typecheck full_cache gamma_init_m em); (* Analyse the modified program *)
+  Printf.printf "transf=move; fv_c=%d; depth=%d; inv_depth=%d - %s\n\n" fv_c depth inv_depth (IncrementalReport.string_of_report IncrementalTyping.report)
+
 let check_incremental_result fileo filem = let res = analyze_and_report fileo filem in assert_equal (fst res) (snd res)
 
 (* Test Fixture *)
@@ -159,6 +199,11 @@ let test_autogen = "Test: generated AST + transformed">:::
     "id2">::(fun _ -> run 128 8);
     "add1">::(fun _ -> run_add 8 8 1);
     "add2">::(fun _ -> run_add 128 8 3);
+    "elim1">::(fun _ -> run_elim 8 8 7);
+    "elim2">::(fun _ -> run_elim 128 8 3);
+    "move1">::(fun _ -> run_move 8 8 5);
+    "move2">::(fun _ -> run_move 128 8 3);
+
   ]
 
 (* Test Runner; ~verbose:true gives info on succ tests *)

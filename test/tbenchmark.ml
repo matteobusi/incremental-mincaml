@@ -20,9 +20,9 @@ let bench_original_vs_inc e repeat time =
   let full_cache = Cache.copy (Cache.create_empty init_sz) in
   Cache.build_cache typed_e gamma_init full_cache;
   Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
-    ("Origin", (fun () -> ignore (Typing.typecheck gamma_init e)), ());
-    ("CacInc", (fun () -> ignore (IncrementalTyping.typecheck full_cache gamma_init e)), ());
-    ("EmpInc", (fun () -> ignore (Cache.clear empty_cache; assert (Cache.is_empty empty_cache); IncrementalTyping.typecheck empty_cache gamma_init e)), ())
+    ("orig", (fun () -> ignore (Typing.typecheck gamma_init e)), ());
+    ("inc", (fun () -> ignore (IncrementalTyping.typecheck full_cache gamma_init e)), ());
+    ("einc", (fun () -> ignore (Cache.clear empty_cache; IncrementalTyping.typecheck empty_cache gamma_init e)), ())
   ] 
 
 let bench_original_vs_incr_add e d repeat time = 
@@ -35,53 +35,104 @@ let bench_original_vs_incr_add e d repeat time =
   let full_cache = Cache.create_empty init_sz in
   (* Build the full cache for e *)
   Cache.build_cache typed_e gamma_init full_cache;
+  let gamma_init_m = gamma_init in (* In this environment we will have some useless bindings, but this doesn't affect the benchmarking *)
   (* Invalidate part of the cache, corresponding to the rightmost subtree of depth tree_depth - d; This simulates addition of code. *)
   invalidate_rsubast full_cache e d;
   Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
-    ("Origin", (fun () -> ignore (Typing.typecheck gamma_init e)), ());
-    ("CacInc", (fun () -> ignore (invalidate_rsubast full_cache e d; IncrementalTyping.typecheck full_cache gamma_init e)), ());
+    ("orig", (fun () -> ignore (Typing.typecheck gamma_init e)), ());
+    ("inc", (fun () -> ignore (IncrementalTyping.typecheck ~repl:(fun c k v -> ()) full_cache gamma_init_m e)), ());
   ] 
 
-let bench_original_vs_incr_elim e d repeat time = ()
+(* 
+  This one cannot be simulated by manipulating the cache, so it requires to actually modify the tree. 
+  In this case the idea is pretty simple: descend along e to the rightmost subtree of depth d, then simply remove it and replace with a leaf.
+*)
+let bench_original_vs_incr_elim e d repeat time = 
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
+  let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
+  (* These are just to avoid multiple recomputations *)
+  let typed_e = Typing.typecheck gamma_init e in
+  let init_sz = M.cardinal gamma_init in
+  let full_cache = Cache.create_empty init_sz in
+  (* Build the full cache for e *)
+  Cache.build_cache typed_e gamma_init full_cache;
+  (* The modified program: eliminate the rightmost subtree at depth d by substituting it with a constant leaf *)
+  let em = tree_subst_rm e d (Annotast.Int(42, Hashing.compute_hash 42)) in 
+  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty) in
+  Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
+    ("orig", (fun () -> ignore (Typing.typecheck gamma_init em)), ());
+    ("inc", (fun () -> ignore (IncrementalTyping.typecheck  ~repl:(fun c k v -> ()) full_cache gamma_init_m em)), ());
+  ] 
+
+(* 
+  This one cannot be simulated by manipulating the cache, so it requires to actually modify the tree. 
+  Again, pretty simple: descend along e to the rightmost subtree of depth d, descend along to the leftmost subtree of depth d+1 (to avoid locality and simmetricity in changes that makes the computations artificially faster) and swap them.
+*)
+let bench_original_vs_incr_move e d repeat time =
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
+  let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
+  (* These are just to avoid multiple recomputations *)
+  let typed_e = Typing.typecheck gamma_init e in
+  let init_sz = M.cardinal gamma_init in
+  let full_cache = Cache.create_empty init_sz in
+  (* Build the full cache for e *)
+  Cache.build_cache typed_e gamma_init full_cache;
+  (* The modified program: swap the two subtrees *)
+  let rm_tree = get_rm e d in 
+  let lm_tree = get_lm e (d + 1) in
+  let em' = tree_subst_rm e d lm_tree in 
+  let em = tree_subst_lm em' (d + 1) rm_tree in
+  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty) in
+  Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
+    ("orig", (fun () -> ignore (Typing.typecheck gamma_init em)), ());
+    ("inc", (fun () -> ignore (IncrementalTyping.typecheck ~repl:(fun c k v -> ()) full_cache gamma_init_m em)), ());
+  ] 
 
 let gen_list min max next = 
   let rec gen_aux curr = 
     if curr >= max then [max] else curr :: (gen_aux (next curr))
   in gen_aux min
 
-let rec cartesian a b = match b with
+let rec cartesian a b = match b with 
 | [] -> []
 | be :: bs ->  (List.map (fun ae -> (be, ae)) a) @ (cartesian a bs)
 
-let _ = 
-  (* Printf.printf "repeat, time, fvc, depth, name, rate\n"; *)
-  let repeat, time = 1, 2 in
-  let max_depth = 16 in
-  let depth_list = gen_list 8 max_depth (fun n -> n+2) in 
-  let fc_c_list = gen_list 1 (BatInt.pow 2 (max_depth-1)) (fun n -> n*2) in
-  let inv_depth = gen_list 1 max_depth (fun n -> n*2) in
-  let param_list_id = cartesian depth_list fc_c_list in
-  let param_list_add = cartesian param_list_id inv_depth in
-    (* Original typing algorithm vs. Incremental w full cache & no mofications vs. Incremental w empty cache *)
-    List.iter (fun (fv_c, depth) -> (
-      if fv_c <= (BatInt.pow 2 (max_depth-1)) then (
-        Printf.printf "transf=id; fv_c=%d; depth=%d\n" fv_c depth;
-        let e = Generator.gen_ibop_ids_ast depth "+" fv_c in (bench_original_vs_inc e repeat time) |> Benchmark.tabulate)
-      else ()
-      )) param_list_id;
-    (* (Simulated) code addition: full re-typing vs. incremental w full cache *)
-    List.iter (fun (inv_depth, (fv_c, depth)) -> (
-      if fv_c <= (BatInt.pow 2 (max_depth-1)) && inv_depth <= depth then (
-        Printf.printf "transf=add; fv_c=%d; depth=%d; inv_depth=%d\n" fv_c depth inv_depth;
-        let e = Generator.gen_ibop_ids_ast depth "+" fv_c in (bench_original_vs_incr_add e inv_depth repeat time) |> Benchmark.tabulate)
-      else ()
-      )) param_list_add;
-    (* Code elimination: full re-typing vs. incremental w full cache *)
+let print_res ?(inv_depth=(-1)) csv results repeat time transf fv_c depth =
+  if csv then 
+    List.iter (
+      fun (name, reslist) -> 
+      List.iter (
+        fun res -> 
+        let rate = (Int64.to_float res.iters) /. (res.utime +. res.stime) in 
+          Printf.printf "%s, %d, %d, %s, %d, %d, %d, %f\n" name repeat time transf fv_c depth inv_depth rate) reslist; flush stdout
+      ) results
+  else
+    (Printf.printf "transf=%s; fv_c=%d; depth=%d; inv_depth=%d\n" transf fv_c depth inv_depth; (results |> Benchmark.tabulate))
 
-    
-    (*
-    List.iter (fun n -> Printf.printf "\t One free variable; depth %d.\n" n; (let e = Generator.gen_ibop_id_ast n "+" "x" in benchmark e e)) [2; 4; 8; 16; 20];
-    List.iter (fun n -> Printf.printf "\t %d free variable(s); depth %d.\n" n n; (let e = Generator.gen_ibop_ids_ast n "+" n in benchmark e e)) [2; 4; 8; 16; 20];
-    List.iter (fun n -> let fv_n = (Batteries.Int.pow 2 n) in Printf.printf "\t %d free variable(s); depth %d.\n" fv_n n; (let e = Generator.gen_ibop_ids_ast n "+" fv_n in benchmark e e)) [2; 4; 8; 16; 20]
-    (* Code motion: full re-typing vs. incremental w full cache *)
-    (* Code elimination: full re-typing vs. incremental w full cache *) *)
+let _ = 
+  if Array.length Sys.argv < 6 then
+    Printf.printf "%s repeat time min_depth max_depth csv\n" Sys.argv.(0)
+  else
+    let repeat, time, min_depth, max_depth, csv = int_of_string Sys.argv.(1), int_of_string Sys.argv.(2), int_of_string Sys.argv.(3), int_of_string Sys.argv.(4), bool_of_string Sys.argv.(5) in
+    let depth_list = gen_list min_depth max_depth (fun n -> n+2) in 
+    let fc_c_list = gen_list 1 (BatInt.pow 2 (max_depth-1)) (fun n -> n*2) in
+    let inv_depth = gen_list 2 max_depth (fun n -> n*2) in
+    let param_list = cartesian (cartesian depth_list fc_c_list) inv_depth in
+
+      if csv then 
+        Printf.printf "name, repeat, time, transf, fvc, depth, inv_depth, rate\n"
+      else ();
+      List.iter (fun (inv_depth, (fv_c, depth)) -> (
+        if fv_c <= (BatInt.pow 2 (max_depth-1)) && inv_depth < depth then
+            let e = Generator.gen_ibop_ids_ast depth "+" fv_c in 
+              (* Original typing algorithm vs. Incremental w full cache & no mofications vs. Incremental w empty cache *)
+              print_res csv (bench_original_vs_inc e repeat time) repeat time "id" fv_c depth;
+              (* (Simulated) code addition: full re-typing vs. incremental w full cache *)
+              print_res csv (bench_original_vs_incr_add e inv_depth repeat time) repeat time "add" fv_c depth ~inv_depth:inv_depth;
+              (* Code elimination: full re-typing vs. incremental w full cache *)
+              print_res csv (bench_original_vs_incr_elim e inv_depth repeat time) repeat time "elim" fv_c depth ~inv_depth:inv_depth;
+              (* Code motion: full re-typing vs. incremental w full cache *)
+              print_res csv (bench_original_vs_incr_move e inv_depth repeat time) repeat time "move" fv_c depth ~inv_depth:inv_depth
+        else ()
+        )
+      ) param_list

@@ -45,3 +45,43 @@ let rec invalidate_rsubast cache e d =
   | (Var(_, _), _) -> failwith "get_r_subaast: d is too big!"
   | (IBop(_, _, r, _), _) ->  Cache.remove_all cache (Annotast.get_annot e); invalidate_rsubast cache r (d-1)
   | _ -> failwith "get_r_subaast: unsupported aAST."
+
+(*
+Substitues the rightmost tree at depth d in e with n
+*)
+let rec tree_subst_rm e d n =
+  match (e, d) with
+  | (_, 0) -> n
+  | (Var(_, _), _) -> failwith "tree_subst_rm: d is too big!"
+  | (IBop(op, l, r, a), _) ->  
+    let rn = tree_subst_rm r (d-1) n in
+    let annot = Hashing.combine_hashes [ Hashing.compute_hash op; Hashing.extract_simple_hash l; Hashing.extract_simple_hash rn] in
+    IBop(op, l, rn, annot)
+  | _ -> failwith "tree_subst_rm: unsupported aAST."
+
+(*
+Substitues the leftmost tree at depth d in e with n
+*)
+let rec tree_subst_lm e d n =
+  match (e, d) with
+  | (_, 0) -> n
+  | (Var(_, _), _) -> failwith "tree_subst_lm: d is too big!"
+  | (IBop(op, l, r, a), _) ->  
+    let ln = tree_subst_lm l (d-1) n in
+    let annot = Hashing.combine_hashes [ Hashing.compute_hash op; Hashing.extract_simple_hash ln; Hashing.extract_simple_hash r] in
+    IBop(op, ln, r, annot)
+  | _ -> failwith "tree_subst_lm: unsupported aAST."
+
+let rec get_lm e d = 
+    match (e, d) with
+  | (_, 0) -> e
+  | (Var(_, _), _) -> failwith "get_lm: d is too big!"
+  | (IBop(_, l, _, _), _) -> get_lm l (d-1)
+  | _ -> failwith "get_lm: unsupported aAST."
+
+let rec get_rm e d = 
+    match (e, d) with
+  | (_, 0) -> e
+  | (Var(_, _), _) -> failwith "get_rm: d is too big!"
+  | (IBop(_, _, r, _), _) -> get_rm r (d-1)
+  | _ -> failwith "get_rm: unsupported aAST."

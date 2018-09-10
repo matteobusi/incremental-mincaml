@@ -5,7 +5,6 @@ open M
 open Typing
 open Varset
 
-(* TODO: hashtbl instead of maps might be better and more efficient *)
 (* Associates each node hash to its corresponding environment and type *)
 module Cache = 
 struct
@@ -17,9 +16,7 @@ include Hashtbl.Make(struct
         end)
 
 let create_empty n = create n
-
 let extract_cache h cache = find_option cache h
-(* let add h gamma tau cache = add cache h (gamma, tau) *)
 
 (* DEBUGGING UTILITY: print the cache on the stdout; TODO: reimplement using ppf *)
 let rec print_cache c = 
@@ -38,7 +35,7 @@ let rec print_cache c =
   Cache initially an empty MUTABLE Cache. 
 *)
 let rec build_cache e env cache =
-    let gamma = env in (*FIXME:  M.restrict env (Annotast.free_variables e) *)
+    let gamma = env in (*FIXME:  M.restrict env (Annotast.free_variables e) -- not needed! *)
     match e with
     | Unit((hash, tau)) -> add cache hash (gamma, tau)
     | Bool(_, (hash, tau))
