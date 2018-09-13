@@ -40,7 +40,7 @@ let bench_original_vs_incr_add e d repeat time =
   invalidate_rsubast full_cache e d;
   Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
     ("orig", (fun () -> ignore (Typing.typecheck gamma_init e)), ());
-    ("inc", (fun () -> ignore (IncrementalTyping.typecheck ~repl:(fun c k v -> ()) full_cache gamma_init_m e)), ());
+    ("inc", (fun () -> ignore (let copy_cache = Cache.copy full_cache in IncrementalTyping.typecheck copy_cache gamma_init_m e)), ());
   ] 
 
 (* 
@@ -61,7 +61,7 @@ let bench_original_vs_incr_elim e d repeat time =
   let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty) in
   Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
     ("orig", (fun () -> ignore (Typing.typecheck gamma_init em)), ());
-    ("inc", (fun () -> ignore (IncrementalTyping.typecheck  ~repl:(fun c k v -> ()) full_cache gamma_init_m em)), ());
+    ("inc", (fun () -> ignore (let copy_cache = Cache.copy full_cache in IncrementalTyping.typecheck copy_cache gamma_init_m em)), ());
   ] 
 
 (* 
@@ -85,7 +85,7 @@ let bench_original_vs_incr_move e d repeat time =
   let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty) in
   Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
     ("orig", (fun () -> ignore (Typing.typecheck gamma_init em)), ());
-    ("inc", (fun () -> ignore (IncrementalTyping.typecheck ~repl:(fun c k v -> ()) full_cache gamma_init_m em)), ());
+    ("inc", (fun () -> ignore (let copy_cache = Cache.copy full_cache in IncrementalTyping.typecheck copy_cache gamma_init_m em)), ());
   ] 
 
 let gen_list min max next = 
@@ -115,24 +115,26 @@ let _ =
   else
     let repeat, time, min_depth, max_depth, csv = int_of_string Sys.argv.(1), int_of_string Sys.argv.(2), int_of_string Sys.argv.(3), int_of_string Sys.argv.(4), bool_of_string Sys.argv.(5) in
     let depth_list = gen_list min_depth max_depth (fun n -> n+2) in 
-    let fc_c_list = gen_list 1 (BatInt.pow 2 (max_depth-1)) (fun n -> n*2) in
-    let inv_depth = gen_list 2 max_depth (fun n -> n*2) in
-    let param_list = cartesian (cartesian depth_list fc_c_list) inv_depth in
-
-      if csv then 
-        Printf.printf "name, repeat, time, transf, fvc, depth, inv_depth, rate\n"
-      else ();
-      List.iter (fun (inv_depth, (fv_c, depth)) -> (
-        if fv_c <= (BatInt.pow 2 (max_depth-1)) && inv_depth < depth then
-            let e = Generator.gen_ibop_ids_ast depth "+" fv_c in 
-              (* Original typing algorithm vs. Incremental w full cache & no mofications vs. Incremental w empty cache *)
-              print_res csv (bench_original_vs_inc e repeat time) repeat time "id" fv_c depth;
-              (* (Simulated) code addition: full re-typing vs. incremental w full cache *)
-              print_res csv (bench_original_vs_incr_add e inv_depth repeat time) repeat time "add" fv_c depth ~inv_depth:inv_depth;
-              (* Code elimination: full re-typing vs. incremental w full cache *)
-              print_res csv (bench_original_vs_incr_elim e inv_depth repeat time) repeat time "elim" fv_c depth ~inv_depth:inv_depth;
-              (* Code motion: full re-typing vs. incremental w full cache *)
-              print_res csv (bench_original_vs_incr_move e inv_depth repeat time) repeat time "move" fv_c depth ~inv_depth:inv_depth
-        else ()
-        )
-      ) param_list
+    let fv_c_list = gen_list 16384 (BatInt.pow 2 (max_depth-1)) (fun n -> n*2) in (* todo: back to 2 *)
+    let inv_depth = gen_list 2 2 (fun n -> n*2) in (* todo: back to max_depth *)
+    let tpl_cmp (a_id, (a_fvc, a_d)) (b_id, (b_fvc, b_d)) = if (a_id = b_id && a_fvc=b_fvc && a_d = b_d) then 0 else -1 in
+    let param_list = List.sort_uniq tpl_cmp (cartesian (cartesian depth_list fv_c_list) inv_depth) in
+    let param_list = List.filter (fun (inv_depth, (fv_c, depth)) -> fv_c <= (BatInt.pow 2 (depth-1)) && inv_depth < depth) param_list in
+    let len = List.length param_list in
+    if csv then 
+      Printf.printf "name, repeat, time, transf, fvc, depth, inv_depth, rate\n"
+    else ();
+    List.iteri (fun i (inv_depth, (fv_c, depth)) -> (
+      Printf.eprintf "[%d/%d]\n" (i+1) len;
+      flush stderr;
+      let e = Generator.gen_ibop_ids_ast depth "+" fv_c in 
+      (* Original typing algorithm vs. Incremental w full cache & no mofications vs. Incremental w empty cache *)
+      print_res csv (bench_original_vs_inc e repeat time) repeat time "id" fv_c depth;
+      (* (Simulated) code addition: full re-typing vs. incremental w full cache *)
+      print_res csv (bench_original_vs_incr_add e inv_depth repeat time) repeat time "add" fv_c depth ~inv_depth:inv_depth;
+      (* Code elimination: full re-typing vs. incremental w full cache *)
+      print_res csv (bench_original_vs_incr_elim e inv_depth repeat time) repeat time "elim" fv_c depth ~inv_depth:inv_depth;
+      (* Code motion: full re-typing vs. incremental w full cache *)
+      print_res csv (bench_original_vs_incr_move e inv_depth repeat time) repeat time "move" fv_c depth ~inv_depth:inv_depth
+      )
+    ) param_list

@@ -1,0 +1,36 @@
+### Re-analysing the same tree
+Experiments to re-analyse the same tree were conducted on three variations of the type checker; The first one was the original one (orig in the plot), the second one was the incremental one with a "full cache" build with the buildCache function (inc in the plot), and the last one was the incremental one with an initial empty cache (einc in the plot).
+The last variant is interesting because it allows to evaluate the impact of starting a full type check on a program from scratch.
+
+From the plots we can observe that:
+    - The deeper the tree, the higher is the gain in terms of iterations/s of having a full cache and an incremental type checker
+    - Increasing the number of variables (up to $2^(depth-1)$) decreases the rate of the incremental type checker as the depth increases, but such a checker is still faster then the original type checker (e.g.\ see zoomed plot \verb+transf = id; fv_c = 524288+). This is due to the implementation of compat_env function
+    - Interestingly starting with an empty cache is not always worse than the original type system, in fact when the number of common subtrees is big enough the cache becomes actually useful speeding up the computation (e.g.\ see plot with \verb+fv_c <= 1024+)
+    
+### Incremental analysis when nodes are added to the tree
+This transformation is simulated by invalidating parts of the cache, so to mimic the addition of new subtree to the existing ones.
+In this case, just the original and incremental version with full cache were considered, since it would not be meaningful to try to typecheck a trasnformed program without an actual cache.
+
+In this case the parameter $fv_c$ counts the number of free variables in the tree, while $inv_depth$ expresses the fact that the rightmost subtree of depth $depth - inv_depth$ is invalidated.
+
+Benchmarks and plots suggest that:
+    - The bigger the change (i.e.\ smaller inv_depth) the smaller is the gain in terms of rate for the incremental type checker
+    - A big number of free variables decreases the rate of the incremental type checker
+    - In any case, even in the most difficult (\verb+fv_c = 524288; inv_depth = 2+), the incremental type checker is faster
+
+### Incremental analysis when nodes are moved in the tree
+This transformation is simulated by swapping the rightmost subtree at depth $inv_depth$ with the leftmost at depth $inv_depth+1$ (exchanging the leftmost and the rightmost removes the speedup due to shared parents, the $+1$ is needed to avoid speedup thanks to the simmetricity of trees).
+
+Also this case, just the original and incremental version with full cache were considered, since it would not be meaningful to try to typecheck a transformed program without an actual cache.
+
+Benchmarks and plots suggest that in always case the incremental type checker is faster then the original one up to trees with $O(2^{20})$ nodes. Of course, the gain decreases with the number of free variables, the size of the change and with the depth of the tree.
+
+### Incremental analysis when nodes are removed in the tree
+This transformation is simulated by removing the rightmost tree at depth $inv_depth$ of the original tree and substituing it with a constant leaf.
+Also this case, just the original and incremental version with full cache were considered.
+
+In this case things get a little more complicated.
+Benchmarks and plots suggest in fact that the incremental type checker is not always faster then the original one.
+This is because in shallower trees the time spent in searching overcomes the time spent in the actual type checking.
+The situation changes with the increasing of depth of trees, in all cases typing incrementally a tree with depth $14$ requires a time shorter than or comparable to the original type checking time.
+Again, the number of free variables affects the rate because of the way compat_env is implemented.
