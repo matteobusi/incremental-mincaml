@@ -53,6 +53,8 @@ let get_annot e =
   | Get(_,_, annot)
   | Put(_, _,_, annot) -> annot
 
+let get_fv (e : (int * VarSet.t) t) = snd (get_annot e)
+
 (*
   Pretty prints the given aAST, given the pretty printer function for the annotation
 *)
@@ -133,6 +135,7 @@ let rec free_variables_cps e k =
     | Put (e1, e2, e3, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> free_variables_cps e3 (fun r3 -> k (VarSet.union r1 (VarSet.union r2 r3)))))
 and
 free_variables e = free_variables_cps e (fun d -> d)
+
 
 (*
   Given an aAST compute the number of its nodes

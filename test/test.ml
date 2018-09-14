@@ -68,7 +68,7 @@ let analyzeExpr (file : string) =
   let channel = open_in file in
   let lexbuf = Lexing.from_channel channel in
   let e = Parser.exp Lexer.token lexbuf in
-  let gamma_init = (M.add_list external_signatures M.empty) in  
+  let gamma_init = (M.add_list external_signatures M.empty ) in  
   let te = Typing.typecheck gamma_init e in
   let cache = Cache.create_empty 100 in
   Cache.build_cache te gamma_init cache;
@@ -93,17 +93,16 @@ let analyze_and_report (file : string) (filem : string) =
 
 let check_cache_result file = let (te, cache) = analyzeExpr file in
   let annot_list = build_annot_list te in
-  (* Check the typing. TODO: check the context *)
-  assert_bool ("[Cache] Failed: " ^ file) ((List.for_all (fun (hash, tau) -> (snd (Cache.find cache hash)) = tau) annot_list))
+  assert_bool ("[Cache] Failed: " ^ file) ((List.for_all (fun ((hash, fv), tau) -> (snd (Cache.find cache hash)) = tau) annot_list))
 
 let run fv_c depth = 
   (* Fill up the initial gamma with needed identifiers *)
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
-  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
-  let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
+  let gamma_init = (M.add_list (initial_gamma_list e) M.empty ) in
   (* These are just to avoid multiple recomputations *)
   let typed_e = Typing.typecheck gamma_init e in
-  let init_sz = M.cardinal gamma_init in
+  let init_sz = M.cardinal   gamma_init in
   let full_cache = Cache.copy (Cache.create_empty init_sz) in
   Cache.build_cache typed_e gamma_init full_cache;
   IncrementalReport.reset IncrementalTyping.report;
@@ -114,11 +113,11 @@ let run fv_c depth =
 let run_add fv_c depth inv_depth = 
   (* Fill up the initial gamma with needed identifiers *)
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
-  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
-  let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
+  let gamma_init = (M.add_list (initial_gamma_list e) M.empty ) in
   (* These are just to avoid multiple recomputations *)
   let typed_e = Typing.typecheck gamma_init e in
-  let init_sz = M.cardinal gamma_init in
+  let init_sz = M.cardinal   gamma_init in
   let full_cache = Cache.create_empty init_sz in
   (* Build the full cache for e *)
   Cache.build_cache typed_e gamma_init full_cache;
@@ -132,17 +131,17 @@ let run_add fv_c depth inv_depth =
 let run_elim fv_c depth inv_depth = 
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
   (* Fill up the initial gamma with needed identifiers *)
-  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
-  let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
+  let gamma_init = (M.add_list (initial_gamma_list e) M.empty ) in
   (* These are just to avoid multiple recomputations *)
   let typed_e = Typing.typecheck gamma_init e in
-  let init_sz = M.cardinal gamma_init in
+  let init_sz = M.cardinal   gamma_init in
   let full_cache = Cache.create_empty init_sz in
   (* Build the full cache for e *)
   Cache.build_cache typed_e gamma_init full_cache;
   (* The modified program: eliminate the rightmost subtree at depth d by substituting it with a constant leaf *)
-  let em = tree_subst_rm e inv_depth (Annotast.Int(42, Hashing.compute_hash 42)) in 
-  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty) in
+  let em = tree_subst_rm e inv_depth (Annotast.Int(42, (Hashing.compute_hash 42, VarSet.empty))) in 
+  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty ) in
   IncrementalReport.reset IncrementalTyping.report;
   IncrementalReport.set_nc (nodecount em) IncrementalTyping.report;
   ignore (IncrementalTyping.typecheck full_cache gamma_init_m em); (* Analyse the modified program *)
@@ -150,11 +149,11 @@ let run_elim fv_c depth inv_depth =
 
 let run_move fv_c depth inv_depth = 
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
-  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.free_variables e))) in
-  let gamma_init = (M.add_list (initial_gamma_list e) M.empty) in
+  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
+  let gamma_init = (M.add_list (initial_gamma_list e) M.empty ) in
   (* These are just to avoid multiple recomputations *)
   let typed_e = Typing.typecheck gamma_init e in
-  let init_sz = M.cardinal gamma_init in
+  let init_sz = M.cardinal   gamma_init in
   let full_cache = Cache.create_empty init_sz in
   (* Build the full cache for e *)
   Cache.build_cache typed_e gamma_init full_cache;
@@ -163,7 +162,7 @@ let run_move fv_c depth inv_depth =
   let lm_tree = get_lm e (inv_depth + 1) in
   let em' = tree_subst_rm e inv_depth lm_tree in 
   let em = tree_subst_lm em' (inv_depth+1) rm_tree in
-  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty) in
+  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty ) in
   IncrementalReport.reset IncrementalTyping.report;
   IncrementalReport.set_nc (nodecount em) IncrementalTyping.report;
   ignore (IncrementalTyping.typecheck full_cache gamma_init_m em); (* Analyse the modified program *)
@@ -208,7 +207,7 @@ let test_autogen = "Test: generated AST + transformed">:::
 
 (* Test Runner; ~verbose:true gives info on succ tests *)
 let _ = 
-  (* run_test_tt_main test_cache;  *)
+  run_test_tt_main test_cache;
   run_test_tt_main test_autogen;
   run_test_tt_main test_incr;
 
