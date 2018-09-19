@@ -57,7 +57,7 @@ let rec get_hashed_tree (e : ((int * VarSet.t ) * Type.t) Annotast.t) =
   Function to build the cache given an aAST and a typing environment.
   Cache initially an empty MUTABLE Cache. 
 *)
-let rec build_cache (e : ((int * VarSet.t ) * Type.t) Annotast.t) gamma cache =
+let rec build_cache (e : ((int * VarSet.t ) * Type.t) Annotast.t) (gamma : Type.t M.t) cache =
   let rec build_cache_aux e gamma cache =
     match e with
     | Unit((hash, tau)) -> add cache hash (gamma, tau)
@@ -86,7 +86,7 @@ let rec build_cache (e : ((int * VarSet.t ) * Type.t) Annotast.t) gamma cache =
       add cache hashx (gamma, taux)
     | LetRec ({ name = (f, t); args = yts; body = e1 }, e2, (hash, tau)) ->
       let gamman = M.add_list ((f, Type.Fun(List.map snd yts, t))::yts) gamma in
-      List.iter (fun (v, t) -> add cache (Hashing.compute_hash v) (M.add v t M.empty , t)) ((f, Type.Fun(List.map snd yts, t))::yts);
+      List.iter (fun (v, t) -> add cache (Hashing.compute_hash v) (M.add v t (M.empty ()) , t)) ((f, Type.Fun(List.map snd yts, t))::yts);
       build_cache_aux e1 gamman cache;
       build_cache_aux e2 gamman cache;
       add cache hash (gamma, tau)
@@ -100,7 +100,7 @@ let rec build_cache (e : ((int * VarSet.t ) * Type.t) Annotast.t) gamma cache =
       let (Type.Tuple(e1s)) = Typing.extract_type e1 in
       let gamma_t = M.add_list2 t e1s gamma in
       build_cache_aux e1 gamma cache;
-      List.iter (fun xi -> add cache (Hashing.compute_hash xi) (M.add xi (M.find xi gamma_t) M.empty , (M.find xi gamma_t))) t;
+      List.iter (fun xi -> add cache (Hashing.compute_hash xi) (M.add xi (M.find xi gamma_t) (M.empty ()) , (M.find xi gamma_t))) t;
       build_cache_aux e2 gamma_t cache
     | Array (e1 (* dim *), e2 (* init *) , (hash, tau)) 
     | Get (e1 (* array *) , e2 (* idx *), (hash, tau)) -> add cache hash (gamma, tau); build_cache_aux e1 gamma cache; build_cache_aux e2 gamma cache

@@ -68,7 +68,7 @@ let analyzeExpr (file : string) =
   let channel = open_in file in
   let lexbuf = Lexing.from_channel channel in
   let e = Parser.exp Lexer.token lexbuf in
-  let gamma_init = (M.add_list external_signatures M.empty ) in  
+  let gamma_init = (M.add_list external_signatures (M.empty ()) ) in  
   let te = Typing.typecheck gamma_init e in
   let cache = Cache.create_empty 100 in
   Cache.build_cache te gamma_init cache;
@@ -81,7 +81,7 @@ let analyze_and_report (file : string) (filem : string) =
   Id.counter := 0; (* Fix to avoid situations where the same subtree has different hash *)
   let lexbufm = Lexing.from_channel channelm in
   let em = Parser.exp Lexer.token lexbufm in
-  let gamma_init = (M.add_list external_signatures M.empty) in
+  let gamma_init = (M.add_list external_signatures (M.empty ())) in
   let te, tem = Typing.typecheck gamma_init e, Typing.typecheck gamma_init em in (* tem computed just to compare the results! *)
   let cache = Cache.create_empty 100 in
   Cache.build_cache te gamma_init cache;
@@ -99,7 +99,7 @@ let run fv_c depth =
   (* Fill up the initial gamma with needed identifiers *)
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
   let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
-  let gamma_init = (M.add_list (initial_gamma_list e) M.empty ) in
+  let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
   (* These are just to avoid multiple recomputations *)
   let typed_e = Typing.typecheck gamma_init e in
   let init_sz = M.cardinal   gamma_init in
@@ -114,7 +114,7 @@ let run_add fv_c depth inv_depth =
   (* Fill up the initial gamma with needed identifiers *)
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
   let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
-  let gamma_init = (M.add_list (initial_gamma_list e) M.empty ) in
+  let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
   (* These are just to avoid multiple recomputations *)
   let typed_e = Typing.typecheck gamma_init e in
   let init_sz = M.cardinal   gamma_init in
@@ -132,7 +132,7 @@ let run_elim fv_c depth inv_depth =
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
   (* Fill up the initial gamma with needed identifiers *)
   let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
-  let gamma_init = (M.add_list (initial_gamma_list e) M.empty ) in
+  let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
   (* These are just to avoid multiple recomputations *)
   let typed_e = Typing.typecheck gamma_init e in
   let init_sz = M.cardinal   gamma_init in
@@ -141,7 +141,7 @@ let run_elim fv_c depth inv_depth =
   Cache.build_cache typed_e gamma_init full_cache;
   (* The modified program: eliminate the rightmost subtree at depth d by substituting it with a constant leaf *)
   let em = tree_subst_rm e inv_depth (Annotast.Int(42, (Hashing.compute_hash 42, VarSet.empty))) in 
-  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty ) in
+  let gamma_init_m = (M.add_list (initial_gamma_list em) (M.empty ()) ) in
   IncrementalReport.reset IncrementalTyping.report;
   IncrementalReport.set_nc (nodecount em) IncrementalTyping.report;
   ignore (IncrementalTyping.typecheck full_cache gamma_init_m em); (* Analyse the modified program *)
@@ -150,7 +150,7 @@ let run_elim fv_c depth inv_depth =
 let run_move fv_c depth inv_depth = 
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
   let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
-  let gamma_init = (M.add_list (initial_gamma_list e) M.empty ) in
+  let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
   (* These are just to avoid multiple recomputations *)
   let typed_e = Typing.typecheck gamma_init e in
   let init_sz = M.cardinal   gamma_init in
@@ -162,7 +162,7 @@ let run_move fv_c depth inv_depth =
   let lm_tree = get_lm e (inv_depth + 1) in
   let em' = tree_subst_rm e inv_depth lm_tree in 
   let em = tree_subst_lm em' (inv_depth+1) rm_tree in
-  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty ) in
+  let gamma_init_m = (M.add_list (initial_gamma_list em) (M.empty ()) ) in
   IncrementalReport.reset IncrementalTyping.report;
   IncrementalReport.set_nc (nodecount em) IncrementalTyping.report;
   ignore (IncrementalTyping.typecheck full_cache gamma_init_m em); (* Analyse the modified program *)

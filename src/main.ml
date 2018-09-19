@@ -28,8 +28,8 @@ let analyzeExpr (file : string) (filem : string) =
   let lexbufm = Lexing.from_channel channelm in
   let em = Parser.exp Lexer.token lexbufm in
   try
-    let gamma_init = (M.add_list (initial_gamma_list) M.empty) in (* Just for experimenting, real programs will have empty gamma_init! *)
-    let gamma_init_m = (M.add_list (initial_gamma_list) M.empty) in
+    let gamma_init = (M.add_list (initial_gamma_list) (M.empty ())) in (* Just for experimenting, real programs will have empty gamma_init! *)
+    let gamma_init_m = (M.add_list (initial_gamma_list) (M.empty ())) in
     let te = Typing.typecheck gamma_init e in
     let tem = Typing.typecheck gamma_init em in (* tem computed just to compare the results! *)
     let cache = Cache.create_empty 100 in 
@@ -53,8 +53,8 @@ let _ =
   let e = Generator.gen_ibop_ids_ast (int_of_string Sys.argv.(1)) "+" 10 in
   let em = e in  
   Printf.printf "%s" "Initial gamma..."; flush stdout;
-  let gamma_init = (M.add_list (initial_gamma_list e) M.empty ) in
-  let gamma_init_m = (M.add_list (initial_gamma_list em) M.empty ) in
+  let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
+  let gamma_init_m = (M.add_list (initial_gamma_list em) (M.empty ()) ) in
    Printf.printf "%s" "Initial typing..."; flush stdout;
   let typed_aast = Typing.typecheck gamma_init e in
    Printf.printf "%s" "Building the cache..."; flush stdout; let cache = Cache.create_empty 100 in Cache.build_cache typed_aast gamma_init cache;
