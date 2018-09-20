@@ -20,20 +20,30 @@ let gen_ibop_ids_ast h ibop k =
       Annotast.IBop(ibop, laast, raast, (hash, VarSet.union fv_l fv_r)) in 
   aux h ibop k
 
-(* Invalidate the entries corresponding to the rightmost subtree at depth d (0 for the root) in e  *)
-let rec invalidate_rsubast cache e d = 
+(* Invalidate the entries corresponding to the rightmost subtree at depth d (0 for the root) in e to simulate a modification to e  *)
+let rec simulate_modification cache e d = 
   let rec invalidate_cache cache e = 
     Cache.remove_all cache (fst (Annotast.get_annot e));
     match e with (* Restricted to IBop and Var*)
     | Var(id, _) -> ()
-    | IBop(op, l, r, _) -> invalidate_cache cache l; invalidate_cache cache r
+    | IBop(op, l, r, _) -> 
+      invalidate_cache cache l; invalidate_cache cache r
     | _ -> failwith "invalidate_cache: unsupported aAST."
   in
   match (e, d) with
   | (_, 0) -> invalidate_cache cache e
-  | (Var(_, _), _) -> failwith "get_r_subaast: d is too big!"
-  | (IBop(_, _, r, _), _) ->  Cache.remove_all cache (fst (Annotast.get_annot e)); invalidate_rsubast cache r (d-1)
-  | _ -> failwith "get_r_subaast: unsupported aAST."
+  | (Var(_, _), _) -> failwith "simulate_modification: d is too big!"
+  | (IBop(_, _, r, _), _) ->  Cache.remove_all cache (fst (Annotast.get_annot e)); simulate_modification cache r (d-1)
+  | _ -> failwith "simulate_modification: unsupported aAST."
+
+
+(* Fills cache with just for the rightmost subtree *)
+(* let rec simulate_immersion cache e gamma d = 
+  match (e, d) with
+  | (_, 0) -> Cache.clear cache; Cache.build_cache e gamma cache
+  | (Var(_, _), _) -> failwith "simulate_immersion: d is too big!"
+  | (IBop(_, _, r, _), _) ->  simulate_immersion cache r gamma (d-1)
+  | _ -> failwith "simulate_immersion: unsupported aAST." *)
 
 (*
   Substitues the rightmost tree at depth d in e with n

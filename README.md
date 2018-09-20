@@ -12,6 +12,7 @@ The project requires:
 - [Ounit/OUnit2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library.
 - [Batteries](http://batteries.forge.ocamlcore.org/) OCaml alternative standard library.
 - [Benchmark](http://ocaml-benchmark.forge.ocamlcore.org/) OCaml library for benchmarking.
+- Python, Pandas, Matplotlib and NumPy for producing the plots and analyse the data.
 
 ## Building the project #
 Typing `make` will generate a `main.byte` executable, that you can run to try the incremental typechecker:
@@ -69,8 +70,17 @@ $ make tbenchmark
 ```
 and run the executable:
 ```
-$ ./tbenchmark.native
+$ ./tbenchmark.native repeat time min_depth max_depth csv
 ```
+where `repeat` is the number of repeats of the same experiment, `time` is the running time of each experiment, `min_depth` and `max_depth` specify the size of sythetic programs and `csv` is a boolean that allows to control whether the output should be tabular or in csv format.
+
+## Reproducing the experiments #
+
+To reproduce the experiments it is enough to compile `tbenchmark` and then to run:
+```
+$ ./tbenchmark.native 5 2 8 16 true > results-5-2-8-16.csv; python analysis/analyze.py results-5-2-8-16-final.csv /plots
+```
+the create a new folder `plot` with all the generated plots and a csv file with the raw results.
 
 ## Project structure #
 
@@ -99,5 +109,4 @@ The `src/` directory defines:
 ## TODOS #
 - Incremental type inference
 - Nameless implementation
-- More efficient representation of TypingCaches
 - Other analyses
