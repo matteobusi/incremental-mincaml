@@ -2,7 +2,9 @@
 
 This project is a proof of concept in a very early stages (see below
 for TODOs and known issues) implementing the incremental type checking for MinCaml
-described in ``Using Standard Typing Algorithms Incrementally''.
+described in in the paper
+> [M. Busi, P. Degano and L. Galletta. Using Standard Typing Algorithms Incrementally](https://arxiv.org/abs/1808.00225).
+
 
 ## Requirement to build the project #
 
@@ -80,11 +82,11 @@ where `repeat` is the number of repeats of the same experiment, `time` is the ru
 
 ## Reproducing the experiments #
 
-To reproduce the experiments it is enough to compile `tbenchmark` and then to run:
+To reproduce the experiments presented of the paper, it is enough to compile `tbenchmark` and then to run:
 ```
 $ ./tbenchmark.native 5 2 8 16 true > results-5-2-8-16.csv; python analysis/analyze.py results-5-2-8-16-final.csv /plots
 ```
-the create a new folder `plot` with all the generated plots and a csv file with the raw results.
+It creates a new folder `plot` with all the generated plots and a csv file with the raw results.
 
 ## Project structure #
 
