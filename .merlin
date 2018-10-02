@@ -3,6 +3,8 @@ S src
 S test
 
 PKG ounit
+PKG benchmark
+PKG batteries
 
 B _build/src
 B _build/test

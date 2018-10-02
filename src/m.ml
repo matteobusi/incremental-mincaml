@@ -1,13 +1,22 @@
 (* customized version of Map *)
+open Batteries
+open Varset
 
 module M =
-  Map.Make
-    (struct
-      type t = Id.t
-      let compare = compare
-    end)
-include M
+struct
+  include Hashtbl.Make 
+      (struct
+        type t = Id.t
+        let compare = compare
+        let hash = Hashtbl.hash
+        let equal = String.equal
+      end)
 
-let add_list xys env = List.fold_left (fun env (x, y) -> add x y env) env xys
-let add_list2 xs ys env = List.fold_left2 (fun env x y -> add x y env) env xs ys
-let environment_restrict gamma e = let fv = Annotast.free_variables e in M.filter (fun k _ -> List.mem k fv) gamma
+  let cardinal = length
+  let empty () = create 4096
+  let mem k env = mem env k
+  let find k env = find env k
+  let add x t env = let envc = copy env in add envc x t; envc
+  let add_list xys env = List.fold_left (fun env (x, y) -> add x y env) env xys
+  let add_list2 xs ys env = List.fold_left2 (fun env x y -> add x y env) env xs ys
+end

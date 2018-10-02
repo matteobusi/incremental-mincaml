@@ -1,6 +1,7 @@
 (* From https://github.com/esumii/min-caml *)
 
-type t = (* MinCaml *)
+(* MinCamL types *)
+type t =
   | Unit
   | Bool
   | Int
@@ -9,27 +10,7 @@ type t = (* MinCaml *)
   | Tuple of t list
   | Array of t
 
-(*
-   Var of t option ref
-
-let gentyp () = Var(ref None)
- *)
-
-(* ugly *)
-let rec string_of_type (type_t : t) : string =
-  match type_t with
-  | Unit             -> "unit"
-  | Bool             -> "bool"
-  | Int              -> "int"
-  | Float            -> "float"
-  | Array(t)         -> Printf.sprintf "%s array" (string_of_type t)
-  | Tuple(ts)        -> string_of_typelist ts
-  | Fun(args,rt)     -> Printf.sprintf "%s -> %s" (string_of_typelist args) (string_of_type rt)
-and string_of_typelist (ts : t list) : string =
-  let body = String.concat "*" (List.map string_of_type ts) in
-  Printf.sprintf "(%s)" body
-
-
+(* Type pretty printer *)
 let rec type_ppf ppf (type_t : t) =
   match type_t with
   | Unit -> Format.fprintf ppf "unit"
@@ -38,10 +19,13 @@ let rec type_ppf ppf (type_t : t) =
   | Float -> Format.fprintf ppf "float"
   | Array(t) -> Format.fprintf ppf "[%a]" type_ppf t
   | Tuple(ts) -> Format.fprintf ppf "@[<2>";
-                 typelist_syntax_ppf ppf ts;
-                 Format.fprintf ppf "@]"
+    typelist_syntax_ppf ppf ts;
+    Format.fprintf ppf "@]"
   | Fun(args,rt) -> Format.fprintf ppf "@[<2>";
-                    typelist_syntax_ppf ppf args;
-                    Format.fprintf ppf " -> %a@]" type_ppf rt
+    typelist_syntax_ppf ppf args;
+    Format.fprintf ppf " -> %a@]" type_ppf rt
 and typelist_syntax_ppf ppf ts =
   Format.pp_print_list type_ppf ~pp_sep:(fun ppf () -> Format.pp_print_char ppf '*') ppf ts
+
+(* Use the pretty printer to extract string from a type *)
+let string_of_type t = Format.fprintf Format.str_formatter "%a" type_ppf t; Format.flush_str_formatter ()

@@ -6,18 +6,22 @@ $(TARGET): default
 
 native: $(TARGET).native
 
-#test: test.native #mv $@ $*
-
 %.native:
-	ocamlbuild -use-ocamlfind $@
+	ocamlbuild -tag thread -use-ocamlfind -pkg batteries $@
 
 %.byte:
-	ocamlbuild -use-ocamlfind $@
+	ocamlbuild -tag thread -use-ocamlfind -pkg batteries $@
 
 test: default
-	ocamlbuild -use-ocamlfind $@.byte
+	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,benchmark $@.byte
 
-all: default native
+tbenchmark: default 
+	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,benchmark $@.native
+
+test_prof: default
+	ocamlbuild ocamlopt -tag -p thread -use-ocamlfind -pkg batteries,benchmark test.native
+
+all: native test tbenchmark
 
 clean:
 	ocamlbuild -clean

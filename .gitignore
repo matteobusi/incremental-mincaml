@@ -1,7 +1,9 @@
 _build/
+_tags/
 *.byte
 *.native
 *~
 #*#
 TODO
 examples/sum.ml
+.vscode
