@@ -49,9 +49,9 @@ def plot_on_pdf (filename, res, transf):
                 add_res_inc.plot(x="diffsz", y="rate", ax=ax, label="inc", marker='o', color='orange', linewidth=2) # ORANGE
                 
                 plt.xticks(np.arange(min(add_res_orig["diffsz"]), max(add_res_orig["diffsz"]) + 1, 1.0))
-                if depth == 12 and (fvc==512 or fvc==2048):
+                if depth == 12 and (fvc==512 or fvc==2048 or fvc==1024):
                     plt.yticks(np.arange(0, 8000, 1000))
-                plt.xlabel("$\log_2 (\mathit{\# modified\_nodes} + 1)$")
+                plt.xlabel("$\log_2 (\mathit{\# nodes\_diff} + 1)$")
                 plt.ylabel("re-typings/$s$")
 
                 pdf.savefig()
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         print(("Usage: {} input_file.csv dest_path\n").format(sys.argv[0]))
     else:
-        res = pandas.read_csv(sys.argv[1], sep=", ", engine="python").drop(["repeat", "time"], axis=1)
+        res = pandas.read_csv(sys.argv[1], sep=", ", engine="python", dtype={'fvc':int, 'depth':int, 'inv_depth':int, 'rate':float}).drop(["repeat", "time"], axis=1)
 
         # Just plot for "big" enough trees
         res = res[res["depth"] >= 8]

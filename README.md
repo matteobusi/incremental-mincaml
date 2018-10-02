@@ -12,9 +12,10 @@ The project requires:
 - [Ounit/OUnit2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library.
 - [Batteries](http://batteries.forge.ocamlcore.org/) OCaml alternative standard library.
 - [Benchmark](http://ocaml-benchmark.forge.ocamlcore.org/) OCaml library for benchmarking.
-- Python, Pandas, Matplotlib and NumPy for producing the plots and analyse the data.
+- [Python 3](https://www.python.org/), [Pandas](https://pandas.pydata.org/), [Matplotlib](https://matplotlib.org/) and [NumPy](http://www.numpy.org/) for producing the plots and analyse the data.
 
 ## Building the project #
+
 Typing `make` will generate a `main.byte` executable, that you can run to try the incremental typechecker:
 ```
 $ make
@@ -25,9 +26,19 @@ To clean-up the folder, run:
 $ make clean
 ```
 
+To build the test suite, run:
+```
+$ make test
+```
+
 To build the benchmarks, run:
 ```
 $ make tbenchmark
+```
+
+To build everything, run:
+```
+$ make all
 ```
 
 ## Running #
@@ -52,27 +63,20 @@ Type: unit - IType: unit
 meaning that ``fact_opt.ml`` was type checked incrementally as ``unit`` (``IType: unit``) starting from the original typing information of ``fact.ml``.
 To do that the incremental algorithm 8 nodes of the syntax tree (on a total of 20), finding the needed typing information directly in the TypingCache for 5 times and not finding it for 3 times (0 because of incompatible typing environment and 3 because they were never TypingCached).
 
-## Running the test #
-To run the tests, simply compile the `test.ml` file:
-```
-$ make test
-```
-and run the executable:
+## Running the test suite #
+
+To run the test suite, simply compile the executable as described above and then run the executable:
 ```
 $ ./test.byte
 ```
 
 ## Running the benchmarks #
 
-To build the benchmarks, simply compile `tbenchmark.ml` file:
-```
-$ make tbenchmark
-```
-and run the executable:
+To run the benchmarks, simply compile the executable as described above and then run the executable:
 ```
 $ ./tbenchmark.native repeat time min_depth max_depth csv
 ```
-where `repeat` is the number of repeats of the same experiment, `time` is the running time of each experiment, `min_depth` and `max_depth` specify the size of sythetic programs and `csv` is a boolean that allows to control whether the output should be tabular or in csv format.
+where `repeat` is the number of repeats of the same experiment, `time` is the running time of each experiment, `min_depth` and `max_depth` specify the size of sythetic programs and `csv` is a boolean that controls whether the output should be tabular or in csv format.
 
 ## Reproducing the experiments #
 
@@ -100,7 +104,7 @@ The `src/` directory defines:
 
      annotast.ml          <-- the annotated abstrac syntax tree
      cache.ml             <-- the TypingCache for incremental type checking
-     incremental.ml <-- the actual incremental type checker obtained according to the method in [1]
+     incremental.ml       <-- the actual incremental type checker, obtained following our methodology
      typing.ml            <-- the original type checking algorithm
 
 ## Known issues (to solve in future versions) #
