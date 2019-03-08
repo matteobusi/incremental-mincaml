@@ -14,6 +14,7 @@ The project requires:
 - [Ounit/OUnit2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library.
 - [Batteries](http://batteries.forge.ocamlcore.org/) OCaml alternative standard library.
 - [Benchmark](http://ocaml-benchmark.forge.ocamlcore.org/) OCaml library for benchmarking.
+- [Landmarks](https://github.com/LexiFi/landmarks) OCaml profiling library.
 - [Python 3](https://www.python.org/), [Pandas](https://pandas.pydata.org/), [Matplotlib](https://matplotlib.org/) and [NumPy](http://www.numpy.org/) for producing the plots and analyse the data.
 
 ## Building the project #
@@ -36,6 +37,11 @@ $ make test
 To build the benchmarks, run:
 ```
 $ make tbenchmark
+```
+
+To build the memory benchmarks, run:
+```
+$ make tmemory
 ```
 
 To build everything, run:
@@ -80,6 +86,14 @@ $ ./tbenchmark.native repeat time min_depth max_depth csv
 ```
 where `repeat` is the number of repeats of the same experiment, `time` is the running time of each experiment, `min_depth` and `max_depth` specify the size of sythetic programs and `csv` is a boolean that controls whether the output should be tabular or in csv format.
 
+## Running the memory benchmarks #
+
+To run the benchmarks, simply compile the executable as described above and then run the executable:
+```
+$ OCAML_LANDMARKS=on ./tmemory.native min_depth max_depth cache > res.json
+```
+where `min_depth` and `max_depth` specify the size of sythetic programs and `cache` is a boolean that controls whether the script should measure the memory overhead of the cache alone or that of the whole incremental run.
+
 ## Reproducing the experiments #
 
 To reproduce the experiments presented of the paper, it is enough to compile `tbenchmark` and then to run:
@@ -87,6 +101,12 @@ To reproduce the experiments presented of the paper, it is enough to compile `tb
 $ ./tbenchmark.native 5 2 8 16 true > results-5-2-8-16.csv; python analysis/analyze.py results-5-2-8-16-final.csv /plots
 ```
 It creates a new folder `plot` with all the generated plots and a csv file with the raw results.
+
+To reproduce the memory experiments presented of the paper, it is enough to compile `tmemory` and then to run:
+```
+$ OCAML_LANDMARKS=on ./tbenchmark.native 10 16 true > mem_cache.json; OCAML_LANDMARKS=on ./tbenchmark.native 10 16 false > mem_all.json; ./python analysis/analyzemem.py mem_cache.json mem_all.json
+```
+It produces the latex code for the tables are reported in the paper.
 
 ## Project structure #
 

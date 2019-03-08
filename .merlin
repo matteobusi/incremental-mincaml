@@ -5,6 +5,7 @@ S test
 PKG ounit
 PKG benchmark
 PKG batteries
+PKG landmarks
 
 B _build/src
 B _build/test
