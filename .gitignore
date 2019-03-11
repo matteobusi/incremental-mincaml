@@ -7,3 +7,5 @@ _tags/
 TODO
 examples/sum.ml
 .vscode
+*.csv
+*.json

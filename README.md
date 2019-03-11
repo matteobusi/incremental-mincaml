@@ -104,7 +104,7 @@ It creates a new folder `plot` with all the generated plots and a csv file with 
 
 To reproduce the memory experiments presented of the paper, it is enough to compile `tmemory` and then to run:
 ```
-$ OCAML_LANDMARKS=on ./tbenchmark.native 10 16 true > mem_cache.json; OCAML_LANDMARKS=on ./tbenchmark.native 10 16 false > mem_all.json; ./python analysis/analyzemem.py mem_cache.json mem_all.json
+$ OCAML_LANDMARKS=on ./tmemory.native 10 16 true > mem_cache.json; OCAML_LANDMARKS=on ./tmemory.native 10 16 false > mem_all.json; python analysis/analyzemem.py mem_cache.json mem_all.json
 ```
 It produces the latex code for the tables are reported in the paper.
 
