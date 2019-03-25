@@ -98,7 +98,7 @@ where `min_depth` and `max_depth` specify the size of sythetic programs and `cac
 
 To reproduce the experiments presented of the paper, it is enough to compile `tbenchmark` and then to run:
 ```
-$ ./tbenchmark.native 5 2 8 16 true > results-5-2-8-16.csv; python analysis/analyze.py results-5-2-8-16-final.csv /plots
+$ ./tbenchmark.native 5 2 8 16 true > results-5-2-8-16.csv; python analysis/analyze.py results-5-2-8-16.csv /plots
 ```
 It creates a new folder `plot` with all the generated plots and a csv file with the raw results.
 
