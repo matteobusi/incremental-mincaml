@@ -1,14 +1,14 @@
 %{
 (* parser *)
 (* From https://github.com/esumii/min-caml *)
-(* Adapted to slightly different language @ UniPI 
+(* Adapted to slightly different language @ UniPI
 Improvements/fixes:
     - English comments
     - Better errors
 *)
 open Hashing
 open Annotast
-open Varset
+open VarSet
 
 let get_hash (e : (int * VarSet.t) Annotast.t) = fst (Annotast.get_annot e)
 let get_fv (e : (int * VarSet.t) Annotast.t) = snd (Annotast.get_annot e)
@@ -91,7 +91,7 @@ let fv_of_fundef ({name=(id,rt); args=xs; body=e1}) e2 =
 
 
 /* (* Start symbol *) */
-%type <(int * Varset.VarSet.t) Annotast.t> exp
+%type <(int * VarSet.t) Annotast.t> exp
 %start exp
 
 %%
@@ -225,14 +225,14 @@ exp: /* (* Expressions *) */
     %prec prec_app
     {
       let hargs = List.map get_hash $2 in
-      let fv_args = List.fold_left VarSet.union VarSet.empty (List.map get_fv $2) in 
+      let fv_args = List.fold_left VarSet.union VarSet.empty (List.map get_fv $2) in
       App($1, $2, (combine_hashes ([compute_hash "app" ; get_hash $1] @ hargs), VarSet.union fv_args (get_fv $1)))
     }
 | elems
     %prec prec_tuple
-    { 
+    {
         let fv_tuple = List.fold_left VarSet.union VarSet.empty (List.map (fun e -> get_fv e) $1) in
-        Tuple($1, (combine_hashes ((compute_hash "tuple")::(List.map get_hash $1)), fv_tuple)) 
+        Tuple($1, (combine_hashes ((compute_hash "tuple")::(List.map get_hash $1)), fv_tuple))
     }
 | LET LPAREN pat RPAREN EQUAL exp IN exp
     {

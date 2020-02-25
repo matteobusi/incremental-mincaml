@@ -7,7 +7,7 @@ open Cache
 open Generator
 open Incremental
 open Typing
-open Varset
+open VarSet
 
 let ( -- ) a b = if (a:float) > b then a -. b else 0.
 let pos_sub_mod a b =
@@ -21,20 +21,20 @@ let rescale t a =
     stime = ratio *. a.stime;    cutime = ratio *. a.cutime;
     cstime = ratio *. a.cstime;  iters = t }
 
-let remove_setup_time bench_res s_list = 
+let remove_setup_time bench_res s_list =
   let get_setup name = List.assoc name s_list in
-  List.map 
-    (fun (name, reslist) -> 
-      (name, List.map 
-      (fun res -> 
+  List.map
+    (fun (name, reslist) ->
+      (name, List.map
+      (fun res ->
         let t_real = if res.iters < 4L then 4L else res.iters in
         let setup_res = rescale res.iters (List.hd (snd (List.hd (Benchmark.latency1 ~style:Nil t_real (get_setup name) ())))) in
         pos_sub_mod res setup_res
-      ) 
+      )
       reslist)
   ) bench_res
 
-let bench_original_vs_inc e repeat time = 
+let bench_original_vs_inc e repeat time =
   (* Fill up the initial gamma with needed identifiers *)
   let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
   let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
@@ -51,7 +51,7 @@ let bench_original_vs_inc e repeat time =
   ] in
   remove_setup_time bench_res [("orig", fun ()->()); ("inc", fun ()->()); ("einc", fun () -> (let copy_cache = Cache.copy empty_cache in ignore(copy_cache)))]
 
-let bench_original_vs_inc_mod e d repeat time = 
+let bench_original_vs_inc_mod e d repeat time =
   (* Fill up the initial gamma with needed identifiers *)
   let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
   let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
@@ -68,28 +68,28 @@ let bench_original_vs_inc_mod e d repeat time =
   (* Estimate the time needed to copy the cache *)
   remove_setup_time bench_res [("orig", fun ()->()); ("inc", fun () -> (simulate_modification full_cache e d))]
 
-let gen_list min max next = 
-  let rec gen_aux curr = 
+let gen_list min max next =
+  let rec gen_aux curr =
     if curr >= max then [max] else curr :: (gen_aux (next curr))
   in gen_aux min
 
-let rec cartesian a b = match b with 
+let rec cartesian a b = match b with
 | [] -> []
 | be :: bs ->  (List.map (fun ae -> (be, ae)) a) @ (cartesian a bs)
 
 let print_res ?(inv_depth=(-1)) csv results repeat time transf fv_c depth =
   if csv then
     List.iter (
-      fun (name, reslist) -> 
+      fun (name, reslist) ->
       List.iter (
-        fun res -> 
-        let rate = (Int64.to_float res.iters) /. (res.utime +. res.stime) in 
+        fun res ->
+        let rate = (Int64.to_float res.iters) /. (res.utime +. res.stime) in
           Printf.printf "%s, %d, %d, %s, %d, %d, %d, %f\n" name repeat time transf fv_c depth inv_depth rate) reslist; flush stdout
       ) results
   else
     (Printf.printf "transf=%s; fv_c=%d; depth=%d; inv_depth=%d\n" transf fv_c depth inv_depth; (results |> Benchmark.tabulate))
 
-let _ = 
+let _ =
   if Array.length Sys.argv < 6 then
     Printf.printf "%s repeat time min_depth max_depth csv\n" Sys.argv.(0)
   else
@@ -101,12 +101,12 @@ let _ =
     let param_list = List.sort_uniq tpl_cmp  (cartesian (cartesian depth_list fv_c_list) inv_depth_list) in
     let param_list = List.filter (fun (inv_depth, (fv_c, depth)) -> fv_c <= (BatInt.pow 2 (depth-1)) && inv_depth < depth) param_list in
     let len = List.length param_list in
-    if csv then 
+    if csv then
       Printf.printf "name, repeat, time, transf, fvc, depth, inv_depth, rate\n"
     else ();
     List.iteri (fun i ((inv_depth, (fv_c, depth))) -> (
       Printf.eprintf "[%d/%d] --- depth=%d; fv_c=%d; inv_depth=%d;\n" (i+1) len depth fv_c inv_depth;
-      let e = Generator.gen_ibop_ids_ast depth "+" fv_c in 
+      let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
       (* Original typing algorithm vs. Incremental w full cache & no mofications vs. Incremental w empty cache *)
       Printf.eprintf "transf=id...";
       flush stderr;

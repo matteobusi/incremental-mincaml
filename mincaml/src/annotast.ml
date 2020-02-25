@@ -1,10 +1,10 @@
-(* 
+(*
   MinCaml Annotated Abstract Syntax Tree (aAST)
 *)
 open Batteries
-open Varset
+open VarSet
 
-type 'a t = 
+type 'a t =
   | Unit of 'a
   | Bool of bool * 'a
   | Int of int * 'a
@@ -27,7 +27,7 @@ type 'a t =
   | Put of 'a t * 'a t * 'a t * 'a
 and 'a fundef = { name : Id.t * Type.t; args : (Id.t * Type.t) list; body : 'a t }
 
-(* 
+(*
   Extracts the annotation in the aAST
 *)
 let get_annot e =
@@ -58,7 +58,7 @@ let get_fv (e : (int * VarSet.t) t) = snd (get_annot e)
 (*
   Pretty prints the given aAST, given the pretty printer function for the annotation
 *)
-let string_of_annotast ppf_annot (e : 'a t) : string = 
+let string_of_annotast ppf_annot (e : 'a t) : string =
   let rec ppf_annotast ppf_annot ppf (e : 'a t) =
     let ppf_tree = ppf_annotast ppf_annot in
     match e with
@@ -109,28 +109,28 @@ let string_of_annotast ppf_annot (e : 'a t) : string =
 (*
   Given an aAST, return a new aAST decorated with the set of free variables of its nodes
 *)
-let rec free_variables_cps e k = 
-  let invRemove e s = VarSet.remove s e in 
+let rec free_variables_cps e k =
+  let invRemove e s = VarSet.remove s e in
   match e with
     | Unit(_)
     | Bool(_)
     | Int(_)
     | Float(_) -> k VarSet.empty
     | Var(x, _) -> k (VarSet.singleton x)
-    | Not(e1, _) 
-    | Neg(e1, _) 
+    | Not(e1, _)
+    | Neg(e1, _)
     | FNeg(e1, _) -> free_variables_cps e1 (fun r1 -> k r1)
     | IBop(_, e1, e2, _)
     | FBop(_, e1, e2, _)
     | Rel(_, e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (VarSet.union r1 r2)))
     | If(e1, e2, e3, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> free_variables_cps e3 (fun r3 -> k (VarSet.union r1 (VarSet.union r2 r3)))))
     | Let(x, e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (VarSet.remove x (VarSet.union r1 r2))))
-    | LetRec ({ name = (x, _); args = yts; body = e1 }, e2, _) -> 
+    | LetRec ({ name = (x, _); args = yts; body = e1 }, e2, _) ->
       free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (List.fold_left invRemove (VarSet.union r1 r2) (x::(List.map fst yts)))))
     | App (e1, es, _) -> free_variables_cps e1 (fun r1 -> k (VarSet.union r1 (List.fold_left VarSet.union VarSet.empty (List.map (fun e -> free_variables_cps e k) es))))
     | Tuple(es, _) -> k (List.fold_left VarSet.union VarSet.empty (List.map (fun e -> free_variables_cps e k) es))
     | LetTuple(xs, e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (List.fold_left invRemove (VarSet.union r1 r2)xs)))
-    | Array(e1, e2, _) 
+    | Array(e1, e2, _)
     | Get (e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (VarSet.union r1 r2)))
     | Put (e1, e2, e3, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> free_variables_cps e3 (fun r3 -> k (VarSet.union r1 (VarSet.union r2 r3)))))
 and
@@ -140,7 +140,7 @@ free_variables e = free_variables_cps e (fun d -> d)
 (*
   Given an aAST compute the number of its nodes
 *)
-let rec node_count e = match e with 
+let rec node_count e = match e with
   | Unit(annot)
   | Bool(_, annot)
   | Int(_, annot)

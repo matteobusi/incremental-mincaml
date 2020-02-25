@@ -1,10 +1,10 @@
 (* customized version of Map *)
 open Batteries
-open Varset
+open VarSet
 
 module M =
 struct
-  include Hashtbl.Make 
+  include Hashtbl.Make
       (struct
         type t = Id.t
         let compare = compare

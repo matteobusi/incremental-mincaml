@@ -5,7 +5,7 @@ open M
 open Incremental
 open Typing
 open Cache
-open Varset
+open VarSet
 open Generator
 
 let external_signatures = [
@@ -20,7 +20,7 @@ let external_signatures = [
   "truncate",       Type.Fun([Type.Float], Type.Int);
 ]
 
-let rec nodecount e = match e with 
+let rec nodecount e = match e with
   | Unit(annot)
   | Bool(_, annot)
   | Int(_, annot)
@@ -68,7 +68,7 @@ let analyzeExpr (file : string) =
   let channel = open_in file in
   let lexbuf = Lexing.from_channel channel in
   let e = Parser.exp Lexer.token lexbuf in
-  let gamma_init = (M.add_list external_signatures (M.empty ()) ) in  
+  let gamma_init = (M.add_list external_signatures (M.empty ()) ) in
   let te = Typing.typecheck gamma_init e in
   let cache = Cache.create_empty 100 in
   Cache.build_cache te gamma_init cache;
@@ -88,14 +88,14 @@ let analyze_and_report (file : string) (filem : string) =
   IncrementalReport.reset IncrementalTyping.report;
   IncrementalReport.set_nc (nodecount tem) IncrementalTyping.report;
   let inctem = IncrementalTyping.typecheck cache gamma_init em in (*Analyse the modified program *)
-  Printf.printf "[%s v. %s] - %s\n" file filem (IncrementalReport.string_of_report IncrementalTyping.report);       
+  Printf.printf "[%s v. %s] - %s\n" file filem (IncrementalReport.string_of_report IncrementalTyping.report);
   (Typing.extract_type tem, inctem)
 
 let check_cache_result file = let (te, cache) = analyzeExpr file in
   let annot_list = build_annot_list te in
   assert_bool ("[Cache] Failed: " ^ file) ((List.for_all (fun ((hash, fv), tau) -> (snd (Cache.find cache hash)) = tau) annot_list))
 
-let run fv_c depth = 
+let run fv_c depth =
   (* Fill up the initial gamma with needed identifiers *)
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
   let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
@@ -108,9 +108,9 @@ let run fv_c depth =
   IncrementalReport.reset IncrementalTyping.report;
   IncrementalReport.set_nc (nodecount e) IncrementalTyping.report;
   ignore (IncrementalTyping.typecheck full_cache gamma_init e); (*Analyse the modified program *)
-  Printf.printf "transf=id; fv_c=%d; depth=%d - %s\n\n" fv_c depth (IncrementalReport.string_of_report IncrementalTyping.report)  
+  Printf.printf "transf=id; fv_c=%d; depth=%d - %s\n\n" fv_c depth (IncrementalReport.string_of_report IncrementalTyping.report)
 
-let run_mod fv_c depth inv_depth = 
+let run_mod fv_c depth inv_depth =
   (* Fill up the initial gamma with needed identifiers *)
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
   let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
@@ -145,7 +145,7 @@ let test_incr = "Test: Incremental TC">:::
     "fact.ml - fact_opt.ml">::(fun _ -> check_incremental_result "examples/fact.ml" "examples/fact_opt.ml" );
     "sum-orig.ml - sum-tail.ml">::(fun _ -> check_incremental_result "examples/sum-orig.ml" "examples/sum-tail.ml" );
     "inprod.ml - inprod-loop.ml">::(fun _ -> check_incremental_result "examples/inprod.ml" "examples/inprod-loop.ml");
-    "fact.ml - ack.ml">::(fun _ -> check_incremental_result "examples/fact.ml" "examples/ack.ml" );  
+    "fact.ml - ack.ml">::(fun _ -> check_incremental_result "examples/fact.ml" "examples/ack.ml" );
     "sum-orig.ml - sum-opti.ml">::(fun _ -> check_incremental_result "examples/sum-orig.ml" "examples/sum-opti.ml" );
     "array-avg.ml - array-avg-codemotion.ml">::(fun _ -> check_incremental_result "examples/array-avg.ml" "examples/array-avg-codemotion.ml" );
     "array-avg.ml - array-avg-if.ml">::(fun _ -> check_incremental_result "examples/array-avg.ml" "examples/array-avg-if.ml" );
@@ -163,7 +163,7 @@ let test_autogen = "Test: generated AST + transformed">:::
   ]
 
 (* Test Runner; ~verbose:true gives info on succ tests *)
-let _ = 
+let _ =
   run_test_tt_main test_cache;
   run_test_tt_main test_autogen;
   run_test_tt_main test_incr;

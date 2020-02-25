@@ -1,4 +1,4 @@
-(* Non incremental type checker *)
+(* Non-incremental type checker *)
 open Batteries
 
 open Annotast
