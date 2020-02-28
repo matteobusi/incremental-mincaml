@@ -1,7 +1,5 @@
 open Batteries
 
-open Annotast
-
 let factor1 : int = 3 (* 37 *)
 let factor2 : int = 53
 

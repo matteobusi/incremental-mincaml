@@ -5,7 +5,7 @@ open Annotast
 open M
 
 module Typing = struct
-  exception TypeError of Type.t * Type.t
+    exception TypeError of Type.t * Type.t
 
   let check t1 t2 =
     let rec check_iter t1 t2 =
@@ -108,7 +108,7 @@ module Typing = struct
         (try
           let  zts = List.combine xs ts in
           let nenv = List.fold_left (fun env (x,t) -> M.add x t env) env zts in
-          let tes2 =  typecheck nenv e2 in
+          let tes2 = typecheck nenv e2 in
           LetTuple(xs, tes1, tes2, (annot, extract_type tes2))
         with Invalid_argument _ ->
               failwith "Different arity in pattern matching for tuple")

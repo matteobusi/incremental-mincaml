@@ -1,11 +1,12 @@
-PRJ incrementalAnalysis
-S src
-S test
+S incrementalizer/src
+S incrementalizer/src/fun
+S incrementalizer/src/lib
 
 PKG ounit
 PKG benchmark
 PKG batteries
 PKG landmarks
 
-B _build/src
-B _build/test
+B incrementalizer/_build
+B incrementalizer/_build/src/fun
+B incrementalizer/_build/src/lib
