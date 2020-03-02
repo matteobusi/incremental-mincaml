@@ -160,18 +160,95 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | FBop(_, _, _, _)
         | Rel(_, _, _, _) -> gamma
         | If(_, _, _, _) -> gamma
-        | Let(x, e1, e2, _) -> match i with
-                                | 0 -> gamma
-                                | 1 -> (FunContext.add x (List.at rs i) gamma)
-                                | _ -> failwith "Wrong index for Tr in Let!"
-        | _ -> failwith "Not implemented!"
-        (* | LetRec({name=(id, rt); args=xs; body=e1}, e2, _) -> [e2; e1]
-        | App(e1, e2, _) -> List.rev (e1::e2)
-        | Tuple(_, _) -> gamma
-        | LetTuple(pat, e1, e2, _) -> [e2; e1]
-        | Array(e1, e2, _)
-        | Get(e1, e2, _) -> gamma
-        | Put(e1, e2, e3, _) -> gamma *)
+        | Let(x, e1, e2, _) ->
+            begin
+                match i with
+                | 0 -> gamma
+                | 1 -> (FunContext.add x (List.at rs i) gamma)
+                | _ -> failwith "Wrong index for Tr in Let!"
+            end
+        | LetRec({name=(x, t); args=yts; body=e1}, e2, _) ->
+            let gamma' = (FunContext.add x (TFun(List.map snd yts, t)) gamma) in
+            begin
+                match i with
+                | 0 -> FunContext.add_list yts gamma
+                | 1 -> gamma'
+                | _ -> failwith "Wrong index for Tr in LetRec!"
+            end
+        | App(e, es, _) -> gamma
+        | Tuple(es, _) -> gamma
+        | LetTuple(xs, e1, e2, _) ->
+            begin
+                match i with
+                | 0 -> gamma
+                | 1 -> (match (List.at rs 0) with
+                        | TTuple(ts) -> FunContext.add_list2 xs ts gamma
+                        | _ -> failwith "Wrong type of e1 in LetTuple.")
+                | _ -> failwith "Wrong index for Tr in Let!"
+            end
+        | Array(_, _, _) -> gamma
+        | Get (_, _, _) -> gamma
+        | Put (_, _, _, _) -> gamma
 
-    let checkjoin (t : (int * VarSet.t) term) (gamma : context) (rs : res list) = Some TUnit
+    let checkjoin (t : (int * VarSet.t) term) (gamma : context) (rs : res list) : res option =
+        let rec check t1 t2 =
+            match (t1, t2) with
+                | (TUnit, TUnit) -> Some TUnit
+                | (TInt, TInt) -> Some TInt
+                | (TFloat, TFloat) -> Some TFloat
+                | (TBool, TBool) -> Some TBool
+                | (TArray(t1), TArray(t2)) -> (match check t1 t2 with
+                    | Some t -> Some (TArray t)
+                    | None -> None)
+                | (TTuple(ts1), TTuple(ts2)) ->
+                    let args = List.map (fun (a, b) -> check a b) (List.combine ts1 ts2) in
+                    if List.mem None args then None
+                    else Some (TTuple (List.map (fun (Some t) -> t) args))
+                | (TFun(ts1, tr1),TFun(ts2, tr2)) ->
+                    let args = List.map (fun (a, b) -> check a b) (List.combine ts1 ts2) in
+                    let trs = check tr1 tr2 in
+                    if List.mem None args then None
+                    else
+                        (match trs with
+                        | None -> None
+                        | Some t -> Some (TFun (List.map (fun (Some t) -> t) args, t)))
+                | _ -> None in
+        match t with
+        | Unit(_) -> Some TUnit
+        | Bool(_, _) -> Some TBool
+        | Int(_, _) -> Some TInt
+        | Float(_, _) -> Some TFloat
+        | Var(x, _) -> FunContext.find_opt gamma x
+        | Not(e1, _) -> check (List.at rs 0) TBool
+        | Neg(e1, _) -> check (List.at rs 0) TInt
+        | FNeg(e1, _) -> check (List.at rs 0) TFloat
+        | IBop(_, e1, e2, _) -> (match (check (List.at rs 0) TInt, check (List.at rs 1) TInt) with
+            | (Some _, Some _) -> Some TInt
+            | _ -> None)
+        | FBop(_, e1, e2, _) -> (match (check (List.at rs 0) TFloat, check (List.at rs 1) TFloat) with
+            | (Some _, Some _) -> Some TFloat
+            | _ -> None)
+        | Rel(_, _, _, _) -> (match (check (List.at rs 0) (List.at rs 1)) with
+            | Some _ -> Some TBool
+            | _ -> None)
+        | If(_, _, _, _) -> (match (check (List.at rs 0) TBool, check (List.at rs 1) (List.at rs 2)) with
+            | (Some _, t) -> t
+            | _ -> None)
+        | Let(x, e1, e2, _) -> Some (List.at rs 1)
+        | LetRec({name=(x, t); args=yts; body=e1}, e2, _) -> Some (List.at rs 1)
+        | App(e, es, _) ->
+            (let (tes, te) = List.split_at (List.length rs - 1) rs in
+            let (TFun(ts, tr) as t) = List.at te 0 in
+                check t (TFun (tes , tr)))
+        | Tuple(es, _) -> Some (TTuple rs)
+        | LetTuple(xs, e1, e2, _) -> Some (List.at rs 1)
+        | Array(_, _, _) -> (match check (List.at rs 0) TInt with
+            | None -> None
+            | Some t -> Some (TArray (List.at rs 1)))
+        | Get (_, _, _) -> (match (List.at rs 0, check TInt (List.at rs 1)) with
+            | (TArray te1, Some te2) -> Some te1
+            | _ -> None)
+        | Put (_, _, _, _) -> (match (check TInt (List.at rs 1), check (TArray(List.at rs 2)) (List.at rs 0)) with
+            | (Some te2, Some te3) -> Some TUnit
+            | _ -> None)
 end
