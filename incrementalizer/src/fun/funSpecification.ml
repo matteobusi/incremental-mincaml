@@ -164,7 +164,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
             begin
                 match i with
                 | 0 -> gamma
-                | 1 -> (FunContext.add x (List.at rs i) gamma)
+                | 1 -> (FunContext.add x (List.at rs 0) gamma)
                 | _ -> failwith "Wrong index for Tr in Let!"
             end
         | LetRec({name=(x, t); args=yts; body=e1}, e2, _) ->
@@ -238,7 +238,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | LetRec({name=(x, t); args=yts; body=e1}, e2, _) -> Some (List.at rs 1)
         | App(e, es, _) ->
             (let (tes, te) = List.split_at (List.length rs - 1) rs in
-            let (TFun(ts, tr) as t) = List.at te 0 in
+            let (TFun(ts, tr) as t) = List.at rs 0 in
                 check t (TFun (tes , tr)))
         | Tuple(es, _) -> Some (TTuple rs)
         | LetTuple(xs, e1, e2, _) -> Some (List.at rs 1)

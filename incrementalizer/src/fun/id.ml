@@ -1,3 +1,5 @@
+open FunSpecification
+
 (* From https://github.com/esumii/min-caml *)
 type t = string (* MinCaml *)
 type l = L of string
@@ -13,15 +15,17 @@ let genid s =
   Printf.sprintf "%s.%d" s !counter
 
 let rec id_of_typ = function
-  | Type.Unit -> "u"
-  | Type.Bool -> "b"
-  | Type.Int -> "i"
-  | Type.Float -> "d"
-  | Type.Fun _ -> "f"
-  | Type.Tuple _ -> "t"
-  | Type.Array _ -> "a"
-(*  | Type.Var _ -> assert false *)
+  | FunSpecification.TUnit -> "u"
+  | FunSpecification.TBool -> "b"
+  | FunSpecification.TInt -> "i"
+  | FunSpecification.TFloat -> "d"
+  | FunSpecification.TFun _ -> "f"
+  | FunSpecification.TTuple _ -> "t"
+  | FunSpecification.TArray _ -> "a"
+(*  | TVar _ -> assert false *)
 
 let gentmp typ =
   incr counter;
   Printf.sprintf "T%s%d" (id_of_typ typ) !counter
+
+let equal = String.equal

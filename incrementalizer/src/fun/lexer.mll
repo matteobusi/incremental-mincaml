@@ -1,13 +1,13 @@
 {
 (* lexer *)
 (* From https://github.com/esumii/min-caml *)
-(* Adapted to slightly different language @ UniPI 
+(* Adapted to slightly different language @ UniPI
 Improvements/fixes:
     - English comments
     - Better errors
 *)
+open FunSpecification
 open Parser
-open Type
 }
 
 (* Shorthands for frenquently used regexes *)
@@ -76,7 +76,7 @@ rule token = parse
 | ','
     { COMMA }
 | '_'
-    { IDENT(Id.gentmp Type.Unit) }
+    { IDENT(Id.gentmp FunSpecification.TUnit) }
 | "Array.create" | "Array.make" (* [XX] ad hoc *)
     { ARRAY_CREATE }
 | '.'
