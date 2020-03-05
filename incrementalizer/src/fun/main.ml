@@ -1,4 +1,5 @@
 module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
+module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
 
 open FunSpecification.FunSpecification
 
@@ -48,8 +49,9 @@ let analyzeExpr (file : string) =
     let aast = make_aast e in
     Id.counter := 0; (* Fix to avoid situations where the same subtree has different hashes *)
     let gamma_init = (FunContext.add_list (initial_gamma_list) (FunContext.empty ())) in
+    (* Printf.printf "Program: %s\n" (FunSpecification.FunSpecification.string_of_term (fun f x -> ()) aast); *)
     let te = OriginalFunAlgorithm.typing gamma_init aast in
-        Printf.printf "Type: %s\n" (FunPrettyPrinter.string_of_type te)
+        Printf.printf "Type: %s\n" (FunSpecification.FunSpecification.string_of_type te)
 
 let _ =
     if Array.length Sys.argv = 2 then

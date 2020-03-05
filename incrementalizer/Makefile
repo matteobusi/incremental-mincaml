@@ -15,7 +15,7 @@ native: $(TARGET).native
 # test: default
 # 	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,benchmark $@.byte
 
-all: native test
+all: native
 
 clean:
 	ocamlbuild -clean

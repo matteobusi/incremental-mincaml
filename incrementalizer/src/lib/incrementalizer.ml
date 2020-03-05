@@ -3,25 +3,39 @@ open Batteries
 open LanguageSpecification
 open Original
 
-(* This is just a POC to show that the process is indeed mechanizable, with no focus on performance! *)
+(* This is just a POC to show that the process is indeed mechanizable *)
 module TypeAlgorithm (L : LanguageSpecification) =
 struct
+    module OriginalFunAlgorithm = Original.TypeAlgorithm(L)
+
     let get_empty_cache = Hashtbl.create 100
+
+    let miss c t gamma = None
 
     let rec build_cache at gamma c =
         let ((hash, fvs), res) = L.get_annot at in
-        let child_cache = List.iter (fun ti -> build_cache ti gamma c) (L.get_rev_children at) in
-            Hashtbl.add child_cache hash (gamma, res)
+        List.iter (fun (i, ti) -> build_cache ti gamma c) (L.get_sorted_children at);
+        Hashtbl.add c hash (gamma, res)
 
-    let rec incremental_typing c gamma at =
+    let rec typing c gamma at =
         let (hash, fvs) = L.get_annot at in
-        let ti_list = L.get_rev_children at in
-            match ti_list with
+        let ts = L.get_sorted_children at in
+            match ts with
             | [] -> (* Call the original algorithm and update the cache *)
-                let ta_typed = Original.TypeAlgorithm(L).typing gamma at in
-                let (_, res) = L.term.get_annot ta_typed in
-                    add c hash (gamma, res); ta_typed
-            | _ -> raise "Error" (* Make a copy of c to be faithful to the formal description!
-                let ti_res_list = fold_right (fun ti res_list -> (incremental_typing c (L.tr ta ti gamma res_list) ti)::res_list) [] ti_list in
-                    L.checkjoin at gamma ti_res_list *)
+                let r = OriginalFunAlgorithm.typing gamma at in
+                    Hashtbl.replace c hash (gamma, r); r
+            | _ -> (* This is the inductive case, either a hit or a miss *)
+                match miss c at gamma with
+                | None -> (* This is a miss *)
+                    begin
+                    let rs = List.fold_left (fun rs (i, ti) -> rs@(typing c (L.tr i ti at gamma rs) ti)) [] ts in
+                        (match L.checkjoin at gamma rs with
+                        | None ->
+                            Printf.printf "\nincr. typing failed at: %s\n" (L.string_of_term (fun _ _ -> ()) t);
+                            List.iter (fun t -> Printf.printf "child: %s\n" (L.string_of_term (fun _ _ -> ()) (snd t))) ts;
+                            List.iter (fun r -> Printf.printf "partial res: %s\n" (L.string_of_type r)) rs;
+                            failwith "CheckJoin failed!"
+                        | Some r -> Hashtbl.replace c hash (gamma, r); r)
+                    end
+                | Some res -> res
 end

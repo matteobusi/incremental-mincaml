@@ -11,8 +11,13 @@ module type LanguageSpecification = sig
     type context
     type res
 
-    val get_rev_children : 'a term -> (int * 'a term) list
+    val get_sorted_children : 'a term -> (int * 'a term) list
     val compat      : context -> context -> (int * VarSet.t) term -> bool
     val tr          : int -> (int * VarSet.t) term -> (int * VarSet.t) term -> context -> res list -> context
     val checkjoin   : (int * VarSet.t) term -> context -> res list -> res option
+
+
+    (* Pretty printing utilities *)
+    val string_of_term : (Format.formatter -> 'a -> unit) -> 'a term -> string
+    val string_of_type : res -> string
 end

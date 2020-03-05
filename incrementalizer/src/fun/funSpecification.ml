@@ -60,6 +60,75 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Get(_,_, annot)
         | Put(_, _,_, annot) -> annot
 
+    (* ============================================================================================================== *)
+    let rec type_ppf ppf type_t =
+        match type_t with
+        | TUnit -> Format.fprintf ppf "unit"
+        | TInt -> Format.fprintf ppf "int"
+        | TBool -> Format.fprintf ppf "bool"
+        | TFloat -> Format.fprintf ppf "float"
+        | TArray(t) -> Format.fprintf ppf "[%a]" type_ppf t
+        | TTuple(ts) -> Format.fprintf ppf "@[<2>";
+        typelist_syntax_ppf ppf ts;
+        Format.fprintf ppf "@]"
+        | TFun(args,rt) -> Format.fprintf ppf "@[<2>";
+        typelist_syntax_ppf ppf args;
+        Format.fprintf ppf " -> %a@]" type_ppf rt
+    and typelist_syntax_ppf ppf ts =
+        Format.pp_print_list type_ppf ~pp_sep:(fun ppf () -> Format.pp_print_char ppf '*') ppf ts
+
+    let string_of_term ppf_annot e : string =
+        let rec ppf_annotast ppf_annot ppf e =
+        let ppf_tree = ppf_annotast ppf_annot in
+        match e with
+        | Unit(annot)             	  -> Format.fprintf ppf "@[<2>Unit{%a}@]" ppf_annot annot
+        | Bool(b, annot)         	    -> Format.fprintf ppf "@[<2>%b{%a}@]" b ppf_annot annot
+        | Int(n, annot)          	    -> Format.fprintf ppf "@[<2>%d{%a}@]" n ppf_annot annot
+        | Float(f, annot)        	    -> Format.fprintf ppf "@[<2>%f{%a}@]" f ppf_annot annot
+        | Not(e, annot)          	    -> Format.fprintf ppf "@[<2>Not(%a){%a}@]" ppf_tree e ppf_annot annot
+        | Neg(e ,annot)          	    -> Format.fprintf ppf "@[<2>-(%a){%a}@]" ppf_tree e ppf_annot annot
+        | IBop(op, e1, e2, annot)     -> Format.fprintf ppf "@[<2>%s(%a, %a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
+        | FNeg(e, annot)         	    -> Format.fprintf ppf "@[<2>-.(%a){%a}@]" ppf_tree e ppf_annot annot
+        | FBop(op, e1, e2, annot)     -> Format.fprintf ppf "@[<2>%s(%a, %a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
+        | Rel(op, e1, e2, annot)      -> Format.fprintf ppf "@[<2>%s(%a,%a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
+        | If(e1, e2,e3, annot)   	    -> Format.fprintf ppf "@[<2>If(%a,@,%a,@,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_tree e3 ppf_annot annot
+        | Let(id, e1, e2, annot)      -> Format.fprintf ppf "@[<2>Let(%s,%a,@,%a){%a}@]" id ppf_tree e1 ppf_tree e2 ppf_annot annot
+        | Var(id, annot)        	    -> Format.fprintf ppf "@[<2>Var(%s){%a}@]" id  ppf_annot annot
+        | Array(e1, e2, annot)        -> Format.fprintf ppf "@[<2>Array(%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_annot annot
+        | Get(e1,e2, annot)           -> Format.fprintf ppf "@[<2>Get(%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_annot annot
+        | Put(e1, e2, e3, annot)      -> Format.fprintf ppf "@[<2>Put(%a,%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_tree e3 ppf_annot annot
+        | LetRec(f, e, annot)   	    -> Format.fprintf ppf "@[<2>Let(%a,@,%a){%a}@]" (fundef_ppf ppf_tree) f ppf_tree e ppf_annot annot
+        | App(e, es, annot)           -> Format.fprintf ppf "@[<2>App(%a," ppf_tree e;
+                                        list_syntax_ppf ppf_tree ppf es;
+                                        Format.fprintf ppf "){%a}@]" ppf_annot annot
+        | Tuple(es, annot)      	    -> Format.fprintf ppf "@[<2>Tuple(";
+                                        list_syntax_ppf ppf_tree ppf es;
+                                        Format.fprintf ppf "){%a}@]" ppf_annot annot
+        | LetTuple(bs, e1, e2, annot) -> Format.fprintf ppf "@[<2>LetTuple(%s,%a,@,%a){%a}@]" (String.concat " " bs)
+                                        ppf_tree e1 ppf_tree e2 ppf_annot annot
+
+        and list_syntax_ppf syntax_ppf ppf es =
+        Format.pp_print_list syntax_ppf ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ", ") ppf es
+
+        and fundef_ppf syntax_ppf ppf ({name = (id,t); args=formals; body=e}) =
+        Format.fprintf ppf "@[<2>FunVal((%s : %a),(" id type_ppf t;
+        list_binding_ppf ppf formals;
+        Format.fprintf ppf "),@,%a)@]"  syntax_ppf e
+
+        and list_binding_ppf ppf bs = if List.length bs > 0 then
+            let (id, t) = List.hd bs in
+            Format.fprintf ppf "%s : %a" id type_ppf t;
+            List.iter (fun (id, t) -> Format.fprintf ppf ", %s : %a" id type_ppf t) (List.tl bs);
+        else
+            ()
+        in
+        ppf_annotast ppf_annot Format.str_formatter e;
+        Format.flush_str_formatter ()
+
+
+    (* Use the pretty printer to extract string from a type *)
+    let string_of_type (t : res) = Format.fprintf Format.str_formatter "%a" type_ppf t; Format.flush_str_formatter ()
+
     let compute_fv e =
         let rec free_variables_cps e k =
             let invRemove e s = VarSet.remove s e in
@@ -117,7 +186,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Get(e1, e2, _) -> Hashing.combine_hashes [Hashing.hash "get"; compute_hash e1; compute_hash e2]
         | Put(e1, e2, e3, _) -> Hashing.combine_hashes [Hashing.hash "put"; compute_hash e1; compute_hash e2; compute_hash e3]
 
-    let get_rev_children e =
+    let get_sorted_children e =
         match e with
         | Unit(_) -> []
         | Bool(_, _)
@@ -129,17 +198,17 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | FNeg(e1, _) -> [(0, e1)]
         | IBop(s, e1, e2, _)
         | FBop(s, e1, e2, _)
-        | Rel(s, e1, e2, _) -> [(1, e2); (0, e1)]
-        | If(b, e1, e2, _) -> [(2, e2); (1, e1); (0, b)]
-        | Let(s, e1, e2, _) -> [(1, e2); (0, e1)]
-        | LetRec({name=(id, rt); args=xs; body=e1}, e2, _) -> [(1, e2); (0, e1)]
-        | App(e1, e2, _) -> let len = List.length e2 in
-                                List.rev ((len, e1)::(List.combine (List.of_enum (0--^len)) e2))
-        | Tuple(es, _) -> List.rev (List.combine (List.of_enum (0--^List.length es)) es)
-        | LetTuple(pat, e1, e2, _) -> [(1, e2); (0, e1)]
+        | Rel(s, e1, e2, _) -> [(0, e1); (1, e2)]
+        | If(b, e1, e2, _) -> [(0, b); (1, e1); (2, e2)]
+        | Let(s, e1, e2, _) -> [(0, e1); (1, e2)]
+        | LetRec({name=(id, rt); args=xs; body=e1}, e2, _) -> [(0, e1); (1, e2)]
+        | App(e, es, _) -> let len = List.length es in
+            (0, e)::(List.combine (List.of_enum (1--len)) es)
+        | Tuple(es, _) -> (List.combine (List.of_enum (0--^List.length es)) es)
+        | LetTuple(pat, e1, e2, _) -> [(0, e1); (1, e2)]
         | Array(e1, e2, _)
-        | Get(e1, e2, _) -> [(1, e2); (0, e1)]
-        | Put(e1, e2, e3, _) -> [(2, e3); (1, e2); (0, e1)]
+        | Get(e1, e2, _) -> [(0, e1); (1, e2)]
+        | Put(e1, e2, e3, _) -> [(0, e1); (1, e2); (2, e3)]
 
 
     let compat gamma gamma' at = true
@@ -171,7 +240,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
             let gamma' = (FunContext.add x (TFun(List.map snd yts, t)) gamma) in
             begin
                 match i with
-                | 0 -> FunContext.add_list yts gamma
+                | 0 -> FunContext.add_list yts gamma'
                 | 1 -> gamma'
                 | _ -> failwith "Wrong index for Tr in LetRec!"
             end
@@ -231,16 +300,21 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Rel(_, _, _, _) -> (match (check (List.at rs 0) (List.at rs 1)) with
             | Some _ -> Some TBool
             | _ -> None)
-        | If(_, _, _, _) -> (match (check (List.at rs 0) TBool, check (List.at rs 1) (List.at rs 2)) with
+        | If(_, _, _, _) ->
+            (match (check (List.at rs 0) TBool, check (List.at rs 1) (List.at rs 2)) with
             | (Some _, t) -> t
             | _ -> None)
         | Let(x, e1, e2, _) -> Some (List.at rs 1)
         | LetRec({name=(x, t); args=yts; body=e1}, e2, _) -> Some (List.at rs 1)
         | App(e, es, _) ->
-            (let (tes, te) = List.split_at (List.length rs - 1) rs in
-            let (TFun(ts, tr) as t) = List.at rs 0 in
-                check t (TFun (tes , tr)))
-        | Tuple(es, _) -> Some (TTuple rs)
+            (
+                let ([te], tes) = List.split_at 1 rs in
+                let (TFun(ts, tr) as t) = te in
+                    match check t (TFun (tes , tr)) with
+                    | None -> None
+                    | Some _ -> Some tr
+            )
+        | Tuple(es, _) -> Some (TTuple rs) (* [ (es_0, 0), (es_1, 1), ..., (es_(len-1), len-1)] *)
         | LetTuple(xs, e1, e2, _) -> Some (List.at rs 1)
         | Array(_, _, _) -> (match check (List.at rs 0) TInt with
             | None -> None
