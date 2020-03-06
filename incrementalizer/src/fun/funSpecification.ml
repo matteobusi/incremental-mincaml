@@ -37,28 +37,6 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | TArray of res
     and context = res FunContext.t
 
-    let get_annot e =
-        match e with
-        | Unit(annot)
-        | Bool(_, annot)
-        | Int(_, annot)
-        | Float(_, annot)
-        | Not(_, annot)
-        | Var(_, annot)
-        | Neg(_, annot)
-        | FNeg(_, annot)
-        | IBop(_,_,_, annot)
-        | FBop(_,_,_, annot)
-        | Rel(_,_,_, annot)
-        | If(_,_,_, annot)
-        | Let(_,_,_, annot)
-        | LetRec(_,_, annot)
-        | App(_,_, annot)
-        | Tuple(_, annot)
-        | LetTuple(_,_,_, annot)
-        | Array(_,_, annot)
-        | Get(_,_, annot)
-        | Put(_, _,_, annot) -> annot
 
     (* ============================================================================================================== *)
     let rec type_ppf ppf type_t =
@@ -128,6 +106,54 @@ module FunSpecification (* : LanguageSpecification *) = struct
 
     (* Use the pretty printer to extract string from a type *)
     let string_of_type (t : res) = Format.fprintf Format.str_formatter "%a" type_ppf t; Format.flush_str_formatter ()
+
+    let term_getannot t =
+        match t with
+        | Unit(annot)
+        | Bool(_, annot)
+        | Int(_, annot)
+        | Float(_, annot)
+        | Not(_, annot)
+        | Var(_, annot)
+        | Neg(_, annot)
+        | FNeg(_, annot)
+        | IBop(_,_,_, annot)
+        | FBop(_,_,_, annot)
+        | Rel(_,_,_, annot)
+        | If(_,_,_, annot)
+        | Let(_,_,_, annot)
+        | LetRec(_,_, annot)
+        | App(_,_, annot)
+        | Tuple(_, annot)
+        | LetTuple(_,_,_, annot)
+        | Array(_,_, annot)
+        | Get(_,_, annot)
+        | Put(_, _,_, annot) -> annot
+
+    let term_edit (t : 'a term) (ti : ('b term) list) (a : 'b) : ('b term) =
+        match (t, ti) with
+        | (Unit(_), _) -> Unit(a)
+        | (Bool(v, _), _) -> Bool(v, a)
+        | (Int(v, _), _) -> Int(v, a)
+        | (Float(v, _), _) -> Float(v, a)
+        | (Not(e1, _), [e1']) -> Not(e1', a)
+        | (Var(x, _), _) -> Var(x, a)
+        | (Neg(e1, _), [e1']) -> Neg(e1', a)
+        | (FNeg(e1, _), [e1']) -> FNeg(e1', a)
+        | (IBop(o, e1, e2, _), [e1'; e2']) -> IBop(o, e1', e2', a)
+        | (FBop(o, e1, e2, _), [e1'; e2']) -> FBop(o, e1', e2', a)
+        | (Rel(o, e1, e2, _), [e1'; e2']) -> Rel(o, e1', e2', a)
+        | (If(b, e1, e2, _), [b'; e1'; e2']) -> If(b', e1', e2', a)
+        | (Let(x, e1, e2, annot), [e1'; e2']) -> Let(x, e1', e2', a)
+        | (LetRec({ name = (f, t); args = al; body = e2 }, e1, _), [e1'; e2']) ->
+            LetRec({ name = (f, t); args = al; body = e2' }, e1', a)
+        | (App(e1, e2, _), e1'::e2') -> App(e1', e2', a)
+        | (Tuple(e1, _), _) -> Tuple (ti, a)
+        | (LetTuple(xs, e1, e2, _), [e1'; e2']) -> LetTuple(xs, e1', e2', a)
+        | (Array(e1, e2, _), [e1'; e2']) -> Array(e1', e2', a)
+        | (Get(e1, e2, _), [e1'; e2']) -> Get(e1', e2', a)
+        | (Put(e1, e2, e3, _), [e1'; e2';e3']) -> Put(e1', e2', e3', a)
+        | _ -> failwith (Printf.sprintf "Wrong parameter list: %s." (string_of_term (fun _ _ -> ()) t))
 
     let compute_fv e =
         let rec free_variables_cps e k =
@@ -211,7 +237,16 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Put(e1, e2, e3, _) -> [(0, e1); (1, e2); (2, e3)]
 
 
-    let compat gamma gamma' at = true
+    let compat gamma gamma' at =
+        (*
+            Straightorward implementation from the theory:
+        *)
+        let fv = snd (term_getannot at) in VarSet.for_all (fun v -> (FunContext.find gamma v) = (FunContext.find gamma' v)) fv
+        (*
+        Sometimes faster implementation:
+        *)
+        (* BatEnum.equal (fun (k1,v1) (k2,v2) ->  if (VarSet.mem k2 fv) then v1=v2 else true) (M.enum env) (M.enum envp)   *)
+
 
     (* i indicates that the i-th element is being processed (0-based) *)
     let tr (i : int) (ti : (int * VarSet.t) term) (t : (int * VarSet.t) term) (gamma : context) (rs : res list) : context =
