@@ -19,4 +19,5 @@ module type LanguageSpecification = sig
     (* Pretty printing utilities *)
     val string_of_term : (Format.formatter -> 'a -> unit) -> 'a term -> string
     val string_of_type : res -> string
+    val string_of_context : context -> string
 end

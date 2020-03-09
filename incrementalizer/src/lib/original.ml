@@ -13,4 +13,9 @@ struct
         List.iter (fun r -> Printf.printf "partial res: %s\n" (L.string_of_type r)) rs;
         failwith "CheckJoin failed!"
       | Some final_res -> final_res)
+
+  let rec term_map (fn : 'a L.term -> 'b) (t : 'a L.term) : 'b L.term =
+    let ts = List.map snd (L.get_sorted_children t) in
+        let ts' = List.map (fun ti -> term_map fn ti) ts in
+            L.term_edit t ts' (fn t)
 end

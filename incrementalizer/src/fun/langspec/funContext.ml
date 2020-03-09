@@ -6,7 +6,7 @@ include Hashtbl.Make
     let equal = String.equal
 end)
 
-let empty () = create 4096
+let get_empty_context () = create 4096
 
 let add x t env = let envc = copy env in add envc x t; envc
 let add_list xys env = List.fold_left (fun env (x, y) -> add x y env) env xys

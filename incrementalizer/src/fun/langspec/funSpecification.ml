@@ -56,34 +56,34 @@ module FunSpecification (* : LanguageSpecification *) = struct
         Format.pp_print_list type_ppf ~pp_sep:(fun ppf () -> Format.pp_print_char ppf '*') ppf ts
 
     let string_of_term ppf_annot e : string =
-        let rec ppf_annotast ppf_annot ppf e =
-        let ppf_tree = ppf_annotast ppf_annot in
-        match e with
-        | Unit(annot)             	  -> Format.fprintf ppf "@[<2>Unit{%a}@]" ppf_annot annot
-        | Bool(b, annot)         	    -> Format.fprintf ppf "@[<2>%b{%a}@]" b ppf_annot annot
-        | Int(n, annot)          	    -> Format.fprintf ppf "@[<2>%d{%a}@]" n ppf_annot annot
-        | Float(f, annot)        	    -> Format.fprintf ppf "@[<2>%f{%a}@]" f ppf_annot annot
-        | Not(e, annot)          	    -> Format.fprintf ppf "@[<2>Not(%a){%a}@]" ppf_tree e ppf_annot annot
-        | Neg(e ,annot)          	    -> Format.fprintf ppf "@[<2>-(%a){%a}@]" ppf_tree e ppf_annot annot
-        | IBop(op, e1, e2, annot)     -> Format.fprintf ppf "@[<2>%s(%a, %a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
-        | FNeg(e, annot)         	    -> Format.fprintf ppf "@[<2>-.(%a){%a}@]" ppf_tree e ppf_annot annot
-        | FBop(op, e1, e2, annot)     -> Format.fprintf ppf "@[<2>%s(%a, %a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
-        | Rel(op, e1, e2, annot)      -> Format.fprintf ppf "@[<2>%s(%a,%a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
-        | If(e1, e2,e3, annot)   	    -> Format.fprintf ppf "@[<2>If(%a,@,%a,@,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_tree e3 ppf_annot annot
-        | Let(id, e1, e2, annot)      -> Format.fprintf ppf "@[<2>Let(%s,%a,@,%a){%a}@]" id ppf_tree e1 ppf_tree e2 ppf_annot annot
-        | Var(id, annot)        	    -> Format.fprintf ppf "@[<2>Var(%s){%a}@]" id  ppf_annot annot
-        | Array(e1, e2, annot)        -> Format.fprintf ppf "@[<2>Array(%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_annot annot
-        | Get(e1,e2, annot)           -> Format.fprintf ppf "@[<2>Get(%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_annot annot
-        | Put(e1, e2, e3, annot)      -> Format.fprintf ppf "@[<2>Put(%a,%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_tree e3 ppf_annot annot
-        | LetRec(f, e, annot)   	    -> Format.fprintf ppf "@[<2>Let(%a,@,%a){%a}@]" (fundef_ppf ppf_tree) f ppf_tree e ppf_annot annot
-        | App(e, es, annot)           -> Format.fprintf ppf "@[<2>App(%a," ppf_tree e;
-                                        list_syntax_ppf ppf_tree ppf es;
-                                        Format.fprintf ppf "){%a}@]" ppf_annot annot
-        | Tuple(es, annot)      	    -> Format.fprintf ppf "@[<2>Tuple(";
-                                        list_syntax_ppf ppf_tree ppf es;
-                                        Format.fprintf ppf "){%a}@]" ppf_annot annot
-        | LetTuple(bs, e1, e2, annot) -> Format.fprintf ppf "@[<2>LetTuple(%s,%a,@,%a){%a}@]" (String.concat " " bs)
-                                        ppf_tree e1 ppf_tree e2 ppf_annot annot
+        let rec ppf_term ppf_annot ppf e =
+            let ppf_tree = ppf_term ppf_annot in
+            match e with
+            | Unit(annot)             	  -> Format.fprintf ppf "@[<2>Unit{%a}@]" ppf_annot annot
+            | Bool(b, annot)         	    -> Format.fprintf ppf "@[<2>%b{%a}@]" b ppf_annot annot
+            | Int(n, annot)          	    -> Format.fprintf ppf "@[<2>%d{%a}@]" n ppf_annot annot
+            | Float(f, annot)        	    -> Format.fprintf ppf "@[<2>%f{%a}@]" f ppf_annot annot
+            | Not(e, annot)          	    -> Format.fprintf ppf "@[<2>Not(%a){%a}@]" ppf_tree e ppf_annot annot
+            | Neg(e ,annot)          	    -> Format.fprintf ppf "@[<2>-(%a){%a}@]" ppf_tree e ppf_annot annot
+            | IBop(op, e1, e2, annot)     -> Format.fprintf ppf "@[<2>%s(%a, %a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
+            | FNeg(e, annot)         	    -> Format.fprintf ppf "@[<2>-.(%a){%a}@]" ppf_tree e ppf_annot annot
+            | FBop(op, e1, e2, annot)     -> Format.fprintf ppf "@[<2>%s(%a, %a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
+            | Rel(op, e1, e2, annot)      -> Format.fprintf ppf "@[<2>%s(%a,%a){%a}@]" op ppf_tree e1 ppf_tree e2 ppf_annot annot
+            | If(e1, e2,e3, annot)   	    -> Format.fprintf ppf "@[<2>If(%a,@,%a,@,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_tree e3 ppf_annot annot
+            | Let(id, e1, e2, annot)      -> Format.fprintf ppf "@[<2>Let(%s,%a,@,%a){%a}@]" id ppf_tree e1 ppf_tree e2 ppf_annot annot
+            | Var(id, annot)        	    -> Format.fprintf ppf "@[<2>Var(%s){%a}@]" id  ppf_annot annot
+            | Array(e1, e2, annot)        -> Format.fprintf ppf "@[<2>Array(%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_annot annot
+            | Get(e1,e2, annot)           -> Format.fprintf ppf "@[<2>Get(%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_annot annot
+            | Put(e1, e2, e3, annot)      -> Format.fprintf ppf "@[<2>Put(%a,%a,%a){%a}@]" ppf_tree e1 ppf_tree e2 ppf_tree e3 ppf_annot annot
+            | LetRec(f, e, annot)   	    -> Format.fprintf ppf "@[<2>LetRec(%a,@,%a){%a}@]" (fundef_ppf ppf_tree) f ppf_tree e ppf_annot annot
+            | App(e, es, annot)           -> Format.fprintf ppf "@[<2>App(%a," ppf_tree e;
+                                            list_syntax_ppf ppf_tree ppf es;
+                                            Format.fprintf ppf "){%a}@]" ppf_annot annot
+            | Tuple(es, annot)      	    -> Format.fprintf ppf "@[<2>Tuple(";
+                                            list_syntax_ppf ppf_tree ppf es;
+                                            Format.fprintf ppf "){%a}@]" ppf_annot annot
+            | LetTuple(bs, e1, e2, annot) -> Format.fprintf ppf "@[<2>LetTuple(%s,%a,@,%a){%a}@]" (String.concat " " bs)
+                                            ppf_tree e1 ppf_tree e2 ppf_annot annot
 
         and list_syntax_ppf syntax_ppf ppf es =
         Format.pp_print_list syntax_ppf ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ", ") ppf es
@@ -100,12 +100,19 @@ module FunSpecification (* : LanguageSpecification *) = struct
         else
             ()
         in
-        ppf_annotast ppf_annot Format.str_formatter e;
+        ppf_term ppf_annot Format.str_formatter e;
         Format.flush_str_formatter ()
 
 
     (* Use the pretty printer to extract string from a type *)
     let string_of_type (t : res) = Format.fprintf Format.str_formatter "%a" type_ppf t; Format.flush_str_formatter ()
+
+    let string_of_context (gamma : context) =
+        let context_ppf ppf gamma =
+            Format.fprintf ppf "[";
+            (FunContext.iter (fun id res -> Format.fprintf ppf ", %s |> %a" id type_ppf res) gamma);
+            Format.fprintf ppf "]";
+        in Format.fprintf Format.str_formatter "%a" context_ppf gamma; Format.flush_str_formatter ()
 
     let term_getannot t =
         match t with
@@ -145,8 +152,8 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | (Rel(o, e1, e2, _), [e1'; e2']) -> Rel(o, e1', e2', a)
         | (If(b, e1, e2, _), [b'; e1'; e2']) -> If(b', e1', e2', a)
         | (Let(x, e1, e2, annot), [e1'; e2']) -> Let(x, e1', e2', a)
-        | (LetRec({ name = (f, t); args = al; body = e2 }, e1, _), [e1'; e2']) ->
-            LetRec({ name = (f, t); args = al; body = e2' }, e1', a)
+        | (LetRec({ name = (f, t); args = al; body = e1 }, e2, _), [e1'; e2']) ->
+            LetRec({ name = (f, t); args = al; body = e1' }, e2', a)
         | (App(e1, e2, _), e1'::e2') -> App(e1', e2', a)
         | (Tuple(e1, _), _) -> Tuple (ti, a)
         | (LetTuple(xs, e1, e2, _), [e1'; e2']) -> LetTuple(xs, e1', e2', a)

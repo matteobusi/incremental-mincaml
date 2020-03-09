@@ -1,12 +1,14 @@
 S incrementalizer/src
+S incrementalizer/src/fun/*
 S incrementalizer/src/fun
 S incrementalizer/src/lib
 
-PKG ounit
+PKG ounit2
 PKG benchmark
 PKG batteries
 PKG landmarks
 
 B incrementalizer/_build
 B incrementalizer/_build/src/fun
+B incrementalizer/_build/src/fun/*
 B incrementalizer/_build/src/lib

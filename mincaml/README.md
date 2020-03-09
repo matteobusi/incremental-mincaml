@@ -84,7 +84,7 @@ To run the benchmarks, simply compile the executable as described above and then
 ```
 $ ./tbenchmark.native repeat time min_depth max_depth csv
 ```
-where `repeat` is the number of repeats of the same experiment, `time` is the running time of each experiment, `min_depth` and `max_depth` specify the size of sythetic programs and `csv` is a boolean that controls whether the output should be tabular or in csv format.
+where `repeat` is the number of repeats of the same experiment, `time` is the running time of each experiment, `min_depth` and `max_depth` specify the size of synthetic programs and `csv` is a boolean that controls whether the output should be tabular or in csv format.
 
 ## Running the memory benchmarks #
 

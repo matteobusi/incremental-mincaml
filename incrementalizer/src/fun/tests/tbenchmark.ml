@@ -1,12 +1,12 @@
 (* open Core_bench *)
 open Benchmark
 
-open M
-open Annotast
-open Cache
+module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
+module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
+
+open FunSpecification.FunSpecification
+
 open Generator
-open Incremental
-open Typing
 open VarSet
 
 let ( -- ) a b = if (a:float) > b then a -. b else 0.
@@ -21,6 +21,7 @@ let rescale t a =
     stime = ratio *. a.stime;    cutime = ratio *. a.cutime;
     cstime = ratio *. a.cstime;  iters = t }
 
+(* Removes from the given benchmark results the time required for the setup, as expressed by functions in s_list *)
 let remove_setup_time bench_res s_list =
   let get_setup name = List.assoc name s_list in
   List.map
@@ -36,34 +37,31 @@ let remove_setup_time bench_res s_list =
 
 let bench_original_vs_inc e repeat time =
   (* Fill up the initial gamma with needed identifiers *)
-  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
-  let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
+  let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
+  let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
   (* These are just to avoid multiple recomputations *)
-  let typed_e = Typing.typecheck gamma_init e in
-  let init_sz = M.cardinal gamma_init in
-  let empty_cache = Cache.create_empty init_sz in
-  let full_cache = Cache.create_empty init_sz in
-  Cache.build_cache typed_e gamma_init full_cache;
+  let full_cache = IncrementalFunAlgorithm.get_empty_cache () in
+  ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
   let bench_res = Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
-    ("orig", (fun () -> ignore (Typing.typecheck gamma_init e)), ());
-    ("inc", (fun () -> ignore (IncrementalTyping.typecheck  full_cache gamma_init e)), ());
-    ("einc", (fun () -> ignore (let copy_cache = Cache.copy empty_cache in IncrementalTyping.typecheck  copy_cache gamma_init e)), ())
+    ("orig", (fun () -> ignore (OriginalFunAlgorithm.typing gamma_init e)), ());
+    ("inc", (fun () -> ignore (IncrementalFunAlgorithm.typing full_cache gamma_init e)), ());
+    ("einc", (fun () -> ignore (
+      let copy_cache = IncrementalFunAlgorithm.get_empty_cache () in (* Maybe we can avoid this part by creating them all beforehand *)
+        IncrementalFunAlgorithm.typing copy_cache gamma_init e)), ())
   ] in
-  remove_setup_time bench_res [("orig", fun ()->()); ("inc", fun ()->()); ("einc", fun () -> (let copy_cache = Cache.copy empty_cache in ignore(copy_cache)))]
+  remove_setup_time bench_res [("orig", fun ()->()); ("inc", fun ()->()); ("einc", fun () -> (let copy_cache = IncrementalFunAlgorithm.get_empty_cache () in ignore(copy_cache)))]
 
 let bench_original_vs_inc_mod e d repeat time =
   (* Fill up the initial gamma with needed identifiers *)
-  let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
-  let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
+  let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
+  let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
   (* These are just to avoid multiple recomputations *)
-  let typed_e = Typing.typecheck gamma_init e in
-  let init_sz = M.cardinal gamma_init in
-  let full_cache = Cache.create_empty init_sz in
+  let full_cache = IncrementalFunAlgorithm.get_empty_cache () in
   (* Build the full cache for e *)
-  Cache.build_cache typed_e gamma_init full_cache;
+  ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
   let bench_res = Benchmark.throughputN ~style:Benchmark.Nil ~repeat:repeat time [
-    ("orig", (fun () -> ignore (Typing.typecheck gamma_init e)), ());
-    ("inc", (fun () -> ignore (simulate_modification full_cache e d; IncrementalTyping.typecheck full_cache gamma_init e)), ());
+    ("orig", (fun () -> ignore (OriginalFunAlgorithm.typing gamma_init e)), ());
+    ("inc", (fun () -> ignore (simulate_modification full_cache e d; IncrementalFunAlgorithm.typing full_cache gamma_init e)), ());
   ] in
   (* Estimate the time needed to copy the cache *)
   remove_setup_time bench_res [("orig", fun ()->()); ("inc", fun () -> (simulate_modification full_cache e d))]
@@ -98,7 +96,7 @@ let _ =
     let fv_c_list = 1 :: (gen_list (BatInt.pow 2 (min_depth-1)) (BatInt.pow 2 (max_depth-1)) (fun n -> 2*n)) in (* Saturating the leaves w all different variables: 2^(depth-1) *)
     let inv_depth_list =  [1; 2] @ gen_list (max_depth/2) max_depth (fun n -> n + 2) in (* Invalidating a tree of 2^(depth - inv_depth) - 1 nodes, i.e. ~2^(-inv_depth) % *)
     let tpl_cmp (a_id, (a_fvc, a_d)) (b_id, (b_fvc, b_d)) = if (a_id = b_id && a_fvc=b_fvc && a_d = b_d) then 0 else -1 in
-    let param_list = List.sort_uniq tpl_cmp  (cartesian (cartesian depth_list fv_c_list) inv_depth_list) in
+    let param_list = List.sort_uniq tpl_cmp (cartesian (cartesian depth_list fv_c_list) inv_depth_list) in
     let param_list = List.filter (fun (inv_depth, (fv_c, depth)) -> fv_c <= (BatInt.pow 2 (depth-1)) && inv_depth < depth) param_list in
     let len = List.length param_list in
     if csv then
