@@ -131,11 +131,11 @@ let _ =
       Printf.eprintf "[%d/%d] --- depth=%d; fv_c=%d; inv_depth=%d;\n" (i+1) len depth fv_c inv_depth;
       let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
       (* Original typing algorithm vs. Incremental w full cache & no mofications vs. Incremental w empty cache *)
-      (* Printf.eprintf "transf=id...";
+      Printf.eprintf "transf=id...";
       flush stderr;
       print_res csv (bench_original_vs_inc e repeat time) repeat time "id" fv_c depth;
       Printf.eprintf "done\n";
-      flush stderr; *)
+      flush stderr;
 
       (* (Simulated) code generic modification: full re-typing vs. incremental w full cache *)
       Printf.eprintf "transf=mod...";
