@@ -118,8 +118,8 @@ let _ =
   else
     let repeat, time, min_depth, max_depth, csv = int_of_string Sys.argv.(1), int_of_string Sys.argv.(2), int_of_string Sys.argv.(3), int_of_string Sys.argv.(4), bool_of_string Sys.argv.(5) in
     let depth_list = gen_list min_depth max_depth (fun n -> n+2) in  (* Seems that big AST trees has ~20k nodes, [Erdweg et al., §6] in Paper *)
-    let fv_c_list = 1 :: (gen_list (BatInt.pow 2 (min_depth/2 - 1)) (BatInt.pow 2 (max_depth-1)) (fun n -> 2*n)) in (* Saturating the leaves w all different variables: 2^(depth-1) *)
-    let inv_depth_list =  1 :: gen_list (min_depth/2) max_depth (fun n -> n + 2) in (* Invalidating a tree of 2^(depth - inv_depth) - 1 nodes, i.e. ~2^(-inv_depth) % *)
+    let fv_c_list = 1 :: (gen_list 2 (BatInt.pow 2 (max_depth-1)) (fun n -> 2*n)) in (* Saturating the leaves w all different variables: 2^(depth-1) *)
+    let inv_depth_list =  1 :: gen_list 2 max_depth (fun n -> n + 2) in (* Invalidating a tree of 2^(depth - inv_depth) - 1 nodes, i.e. ~2^(-inv_depth) % *)
     let tpl_cmp (a_id, (a_fvc, a_d)) (b_id, (b_fvc, b_d)) = if (a_id = b_id && a_fvc=b_fvc && a_d = b_d) then 0 else -1 in
     let param_list = List.sort_uniq tpl_cmp (cartesian (cartesian depth_list fv_c_list) inv_depth_list) in
     let param_list = List.filter (fun (inv_depth, (fv_c, depth)) -> fv_c <= (BatInt.pow 2 (depth-1)) && inv_depth < depth) param_list in
