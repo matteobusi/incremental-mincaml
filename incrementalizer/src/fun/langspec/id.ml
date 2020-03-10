@@ -1,4 +1,5 @@
-open FunSpecification
+open Batteries
+open FunSpecification.FunSpecification
 
 (* From https://github.com/esumii/min-caml *)
 type t = string (* MinCaml *)
@@ -15,14 +16,13 @@ let genid s =
   Printf.sprintf "%s.%d" s !counter
 
 let rec id_of_typ = function
-  | FunSpecification.TUnit -> "u"
-  | FunSpecification.TBool -> "b"
-  | FunSpecification.TInt -> "i"
-  | FunSpecification.TFloat -> "d"
-  | FunSpecification.TFun _ -> "f"
-  | FunSpecification.TTuple _ -> "t"
-  | FunSpecification.TArray _ -> "a"
-(*  | TVar _ -> assert false *)
+  | TUnit -> "u"
+  | TBool -> "b"
+  | TInt -> "i"
+  | TFloat -> "d"
+  | TFun _ -> "f"
+  | TTuple _ -> "t"
+  | TArray _ -> "a"
 
 let gentmp typ =
   incr counter;

@@ -1,41 +1,38 @@
+open Batteries
 open Landmark
 
-open M
-open Annotast
-open Cache
+module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
+module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
+
+open FunSpecification.FunSpecification
+
 open Generator
-open Incremental
-open Typing
 open VarSet
 
 let mem_orig e lo =
   enter lo;
     (* Minimal quantity of memory for non incremental *)
-    let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
-    let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
-    ignore (Typing.typecheck gamma_init e);
+    let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
+    let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
+    ignore (OriginalFunAlgorithm.typing gamma_init e);
   exit lo
 
 let mem_inc e li =
   enter li;
     (* Minimal quantity of memory for incremental *)
-    let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
-    let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
-    let init_sz = M.cardinal gamma_init in
-    let typed_e = Typing.typecheck gamma_init e in
-    let full_cache = Cache.create_empty init_sz in
-    Cache.build_cache typed_e gamma_init full_cache;
-    ignore (IncrementalTyping.typecheck full_cache gamma_init e);
+    let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
+    let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
+    let full_cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
+    ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
+    ignore (IncrementalFunAlgorithm.typing full_cache gamma_init e);
   exit li
 
 let just_cache e l =
-    let initial_gamma_list e = (List.map (fun id -> (id, Type.Int)) (VarSet.elements (Annotast.get_fv e))) in
-    let gamma_init = (M.add_list (initial_gamma_list e) (M.empty ()) ) in
-    let init_sz = M.cardinal gamma_init in
-    let typed_e = Typing.typecheck gamma_init e in
+    let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
+    let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
     enter l;
-      let full_cache = Cache.create_empty init_sz in
-      ignore (Cache.build_cache typed_e gamma_init full_cache);
+      let full_cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
+      ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
     exit l
 
 
@@ -70,7 +67,7 @@ let _ =
       allocated_bytes = true;
       sys_time = false;
       recursive = true;
-      output = Channel stdout;
+      output = Channel Stdlib.stdout;
       format = JSON;
     } in
     set_profiling_options options;
@@ -88,10 +85,8 @@ let _ =
         let lo = register ("orig_" ^ (string_of_int depth) ^ "_" ^ (string_of_int fv_c)) in
         let li = register ("inc_" ^ (string_of_int depth) ^ "_" ^ (string_of_int fv_c)) in
         let lc = register ("cache_" ^ (string_of_int depth) ^ "_" ^ (string_of_int fv_c)) in
-        if cache then ignore (just_cache e lc)
+        if cache then
+          ignore (just_cache e lc)
         else
-        begin
-          ignore (mem_orig e lo);
-          ignore (mem_inc e li)
-        end
+          (ignore (mem_orig e lo); ignore (mem_inc e li))
       )) param_list

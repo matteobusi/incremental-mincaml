@@ -22,7 +22,7 @@ struct
     end
     let report = IncrementalReport.create ()
 
-    let get_empty_cache () : (int, L.context*L.res) Hashtbl.t = Hashtbl.create 128
+    let get_empty_cache sz : (int, L.context*L.res) Hashtbl.t = Hashtbl.create sz
 
     let build_cache t gamma cache =
         (* Same Original.TypeAlgorithm.typing but returns an aAST *)
@@ -47,15 +47,14 @@ struct
             _build_cache aast t gamma cache; aast
 
     let rec typing c gamma t =
-        let miss c t gamma =
-            let (hash, fc) = L.term_getannot t in
-            match Hashtbl.find_option c hash with
+        let miss c hash gamma =
+            (match Hashtbl.find_option c hash with
             | None -> IncrementalReport.register_miss_none report; None (* This is a miss, w/o any corresponding element in cache *)
             | Some (gamma', res') ->
                 if L.compat gamma gamma' t then
                     (IncrementalReport.register_hit report; Some res') (* This is a hit! *)
                 else
-                    (IncrementalReport.register_miss_incomp report; None) in
+                    (IncrementalReport.register_miss_incomp report; None)) in
         let (hash, fvs) = L.term_getannot t in
         let ts = L.get_sorted_children t in
             match ts with
@@ -63,7 +62,7 @@ struct
                 let r = OriginalFunAlgorithm.typing gamma t in
                     Hashtbl.replace c hash (gamma, r); r
             | _ -> (* This is the inductive case, either a hit or a miss *)
-                match miss c t gamma with
+                match miss c hash gamma with
                 | None -> (* This is a miss *)
                     begin
                     (* TODO: copy the cache and update it only in the end! *)

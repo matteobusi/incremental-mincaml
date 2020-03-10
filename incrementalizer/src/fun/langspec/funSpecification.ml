@@ -252,7 +252,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
         (*
         Sometimes faster implementation:
         *)
-        (* BatEnum.equal (fun (k1,v1) (k2,v2) ->  if (VarSet.mem k2 fv) then v1=v2 else true) (M.enum env) (M.enum envp)   *)
+        (* BatEnum.equal (fun (k1,v1) (k2,v2) ->  if (VarSet.mem k2 (snd (term_getannot at))) then v1=v2 else true) (FunContext.enum gamma) (FunContext.enum gamma') *)
 
 
     (* i indicates that the i-th element is being processed (0-based) *)
@@ -329,7 +329,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Bool(_, _) -> Some TBool
         | Int(_, _) -> Some TInt
         | Float(_, _) -> Some TFloat
-        | Var(x, _) -> FunContext.find_opt gamma x
+        | Var(x, _) -> FunContext.find_option gamma x
         | Not(e1, _) -> check (List.at rs 0) TBool
         | Neg(e1, _) -> check (List.at rs 0) TInt
         | FNeg(e1, _) -> check (List.at rs 0) TFloat

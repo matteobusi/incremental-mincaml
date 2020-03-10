@@ -15,8 +15,11 @@ native: $(TARGET).native
 test: default
 	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,benchmark,ounit2 $@.native
 
-bench:
+tbench:
 	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,benchmark,ounit2 tbenchmark.native
+
+mbench:
+	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,landmarks,ounit2 mbenchmark.native
 
 all: native
 

@@ -6,6 +6,7 @@ Improvements/fixes:
     - English comments
     - Better errors
 *)
+open Batteries
 open FunSpecification.FunSpecification
 %}
 

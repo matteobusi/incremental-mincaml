@@ -1,3 +1,4 @@
+open Batteries
 open OUnit2
 
 module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
@@ -68,7 +69,7 @@ let inc_analyze_expr (file : string) =
   let e_hf = (Id.counter := 0; OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) e) in
   let gamma_init = FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ()) in
   let te = OriginalFunAlgorithm.typing gamma_init e_hf in
-  let cache = IncrementalFunAlgorithm.get_empty_cache () in
+  let cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
   let aast = IncrementalFunAlgorithm.build_cache e_hf gamma_init cache in
     (te, aast, cache)
 
@@ -83,7 +84,7 @@ let analyze_and_report (file : string) (filem : string) =
   let em_hf = (Id.counter := 0; OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) em) in
   let gamma_init = FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ()) in
   let te, tem = OriginalFunAlgorithm.typing gamma_init e_hf, OriginalFunAlgorithm.typing gamma_init em_hf in (* tem computed just to compare the results! *)
-  let cache = IncrementalFunAlgorithm.get_empty_cache () in
+  let cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
   ignore (IncrementalFunAlgorithm.build_cache e_hf gamma_init cache);
   IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
   IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount em_hf) IncrementalFunAlgorithm.report;
@@ -103,7 +104,7 @@ let run fv_c depth =
   let initial_gamma_list e = List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e)) in
   let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
   (* These are just to avoid multiple recomputations *)
-  let full_cache = IncrementalFunAlgorithm.get_empty_cache () in
+  let full_cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
   ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
   IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
   IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount e) IncrementalFunAlgorithm.report;
@@ -115,7 +116,7 @@ let run_mod fv_c depth inv_depth =
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
   let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
   let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
-  let full_cache = IncrementalFunAlgorithm.get_empty_cache () in
+  let full_cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
   (* Build the full cache for e *)
   ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
   (* Invalidate part of the cache, corresponding to the rightmost subtree of depth tree_depth - d; This simulates diffs. *)

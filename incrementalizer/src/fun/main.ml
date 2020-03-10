@@ -1,3 +1,5 @@
+open Batteries
+
 module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
 module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
 
@@ -24,7 +26,7 @@ let analyze_expr (file : string) (filem : string) =
     let gamma_init, gamma_initm = (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())), (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())) in
     (* Printf.printf "Program: %s\n" (FunSpecification.FunSpecification.string_of_term (fun f x -> ()) e);
     Printf.printf "Program Mod: %s\n" (FunSpecification.FunSpecification.string_of_term (fun f x -> ()) em); *)
-    let cache = IncrementalFunAlgorithm.get_empty_cache () in
+    let cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
     ignore (IncrementalFunAlgorithm.build_cache e_hf gamma_init cache);
     let te, tem = OriginalFunAlgorithm.typing gamma_init e_hf, IncrementalFunAlgorithm.typing cache gamma_initm em_hf in
         Printf.printf "Type: %s - IType: %s\n" (FunSpecification.FunSpecification.string_of_type te) (FunSpecification.FunSpecification.string_of_type tem)
