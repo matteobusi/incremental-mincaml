@@ -118,16 +118,17 @@ let _ =
   else
     let repeat, time, min_depth, max_depth, csv = int_of_string Sys.argv.(1), int_of_string Sys.argv.(2), int_of_string Sys.argv.(3), int_of_string Sys.argv.(4), bool_of_string Sys.argv.(5) in
     let depth_list = gen_list min_depth max_depth (fun n -> n+2) in  (* Seems that big AST trees has ~20k nodes, [Erdweg et al., §6] in Paper *)
-    let fv_c_list = 1 :: (gen_list 2 (BatInt.pow 2 (max_depth-1)) (fun n -> 2*n)) in (* Saturating the leaves w all different variables: 2^(depth-1) *)
-    let inv_depth_list =  1 :: gen_list 2 max_depth (fun n -> n + 2) in (* Invalidating a tree of 2^(depth - inv_depth) - 1 nodes, i.e. ~2^(-inv_depth) % *)
-    let tpl_cmp (a_id, (a_fvc, a_d)) (b_id, (b_fvc, b_d)) = if (a_id = b_id && a_fvc=b_fvc && a_d = b_d) then 0 else -1 in
-    let param_list = List.sort_uniq tpl_cmp (cartesian (cartesian depth_list fv_c_list) inv_depth_list) in
-    let param_list = List.filter (fun (inv_depth, (fv_c, depth)) -> fv_c <= (BatInt.pow 2 (depth-1)) && inv_depth < depth) param_list in
+    let fv_c_list = 1 :: (gen_list 4 (BatInt.pow 2 (max_depth-1)) (fun n -> 2*n)) in (* Saturating the leaves w all different variables: 2^(depth-1) *)
+    let inv_depth_list =  [1; 2; 3] @ gen_list 4 max_depth (fun n -> n + 2) in (* Invalidating a tree of 2^(depth - inv_depth) - 1 nodes, i.e. ~2^(-inv_depth) % *)
+    let tpl_cmp (a_d, (a_fvc, a_id)) (b_d, (b_fvc, b_id)) = if (a_id = b_id && a_fvc=b_fvc && a_d = b_d) then 0 else -1 in
+    let param_list = List.sort_uniq tpl_cmp (cartesian (cartesian inv_depth_list fv_c_list) depth_list) in
+    let param_list = List.filter (fun (depth, (fv_c, inv_depth)) -> fv_c <= (BatInt.pow 2 (depth-1)) && inv_depth < depth) param_list in
     let len = List.length param_list in
+        (* List.iter (fun (depth, (fv_c, inv_depth)) -> Printf.printf "(depth=%d, fv_c=%d, inv_depth=%d)\n" depth fv_c inv_depth) param_list; *)
     if csv then
       Printf.printf "name, repeat, time, transf, fvc, depth, inv_depth, rate\n"
     else ();
-    List.iteri (fun i ((inv_depth, (fv_c, depth))) -> (
+    List.iteri (fun i ((depth, (inv_depth, fv_c))) -> (
       Printf.eprintf "[%d/%d] --- depth=%d; fv_c=%d; inv_depth=%d;\n" (i+1) len depth fv_c inv_depth;
       let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
       (* Original typing algorithm vs. Incremental w full cache & no mofications vs. Incremental w empty cache *)
