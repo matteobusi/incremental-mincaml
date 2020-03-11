@@ -128,7 +128,7 @@ let _ =
     if csv then
       Printf.printf "name, repeat, time, transf, fvc, depth, inv_depth, rate\n"
     else ();
-    List.iteri (fun i ((depth, (inv_depth, fv_c))) -> (
+    List.iteri (fun i (depth, (fv_c, inv_depth)) -> (
       Printf.eprintf "[%d/%d] --- depth=%d; fv_c=%d; inv_depth=%d;\n" (i+1) len depth fv_c inv_depth;
       let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
       (* Original typing algorithm vs. Incremental w full cache & no mofications vs. Incremental w empty cache *)
