@@ -54,27 +54,30 @@ let rec nodecount e = match e with
 *)
 let cleanup (res : (string * Benchmark2.t list) list) : (string * Benchmark2.t list) list =
   let cpu = cpu_process in
-  let not_outlier avg stddev b = (
+  let not_outlier name avg stddev b = (
     let rate = Int64.to_float b.iters /. cpu b in
-      avg-.(stddev) <= rate && rate <= avg+.(stddev)
+    let min, max = avg-.(stddev), avg+.(stddev) in
+      Printf.printf "%s - #%Ld, avg=%f, dev=%f. %f <= %f <= %f? %b" name b.iters avg stddev min rate max (min <= rate && rate <= max);
+      min <= rate && rate <= max
   ) in
   let stats = List.map (comp_rates cpu) res in
     List.map (fun (name, bm) ->
-      let (_, _, avg, stddev) = List.find (fun (n, _, _, _) -> String.equal n name) stats in
-      let cleaned = List.filter (not_outlier avg stddev) bm in
+      let (_, iter, avg, stddev) = List.find (fun (n, _, _, _) -> String.equal n name) stats in
+      let cleaned = List.filter (not_outlier name avg stddev) bm in
         Printf.printf "Keeping %d/%d samples." (List.length cleaned) (List.length bm);
         (name, cleaned)
       ) res
 
 let bench_original_vs_inc_mod e gamma_init nc d r t =
+  let empty_cache = IncrementalFunAlgorithm.get_empty_cache nc in
   let full_cache = IncrementalFunAlgorithm.get_empty_cache nc in
   ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
   let res = throughputN ~repeat:10 1
     [
       ("orig",
         (fun _ -> ignore (OriginalFunAlgorithm.typing gamma_init e)),
-        (fun () -> IncrementalFunAlgorithm.get_empty_cache nc)
-       );
+        (fun () -> empty_cache)
+      );
       ("inc",
         (fun full_cache -> ignore (IncrementalFunAlgorithm.typing full_cache gamma_init e)),
         (fun () ->
@@ -82,7 +85,8 @@ let bench_original_vs_inc_mod e gamma_init nc d r t =
             ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
             simulate_modification full_cache e d;
             full_cache
-        ))
+        )
+      )
     ] in
     cleanup res
 
