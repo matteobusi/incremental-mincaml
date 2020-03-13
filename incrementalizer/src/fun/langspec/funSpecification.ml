@@ -55,6 +55,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
     and typelist_syntax_ppf ppf ts =
         Format.pp_print_list type_ppf ~pp_sep:(fun ppf () -> Format.pp_print_char ppf '*') ppf ts
 
+
     let string_of_term ppf_annot e : string =
         let rec ppf_term ppf_annot ppf e =
             let ppf_tree = ppf_term ppf_annot in
@@ -107,12 +108,14 @@ module FunSpecification (* : LanguageSpecification *) = struct
     (* Use the pretty printer to extract string from a type *)
     let string_of_type (t : res) = Format.fprintf Format.str_formatter "%a" type_ppf t; Format.flush_str_formatter ()
 
+
     let string_of_context (gamma : context) =
         let context_ppf ppf gamma =
             Format.fprintf ppf "[";
             (FunContext.iter (fun id res -> Format.fprintf ppf ", %s |> %a" id type_ppf res) gamma);
             Format.fprintf ppf "]";
         in Format.fprintf Format.str_formatter "%a" context_ppf gamma; Format.flush_str_formatter ()
+
 
     let term_getannot t =
         match t with
@@ -136,6 +139,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Array(_,_, annot)
         | Get(_,_, annot)
         | Put(_, _,_, annot) -> annot
+
 
     let term_edit (t : 'a term) (ti : ('b term) list) (a : 'b) : ('b term) =
         match (t, ti) with
@@ -161,6 +165,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | (Get(e1, e2, _), [e1'; e2']) -> Get(e1', e2', a)
         | (Put(e1, e2, e3, _), [e1'; e2';e3']) -> Put(e1', e2', e3', a)
         | _ -> failwith (Printf.sprintf "Wrong parameter list: %s." (string_of_term (fun _ _ -> ()) t))
+
 
     let compute_fv e =
         let rec free_variables_cps e k =
@@ -188,6 +193,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
                 | Get (e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (VarSet.union r1 r2)))
                 | Put (e1, e2, e3, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> free_variables_cps e3 (fun r3 -> k (VarSet.union r1 (VarSet.union r2 r3)))))
         in free_variables_cps e (fun d -> d)
+
 
     let rec compute_hash e =
         let hash_of_fundef ({name=(id, rt); args=xs; body=e}) =
@@ -218,6 +224,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Array(e1, e2, _) -> Hashing.combine_hashes [Hashing.hash "mkar"; compute_hash e1; compute_hash e2]
         | Get(e1, e2, _) -> Hashing.combine_hashes [Hashing.hash "get"; compute_hash e1; compute_hash e2]
         | Put(e1, e2, e3, _) -> Hashing.combine_hashes [Hashing.hash "put"; compute_hash e1; compute_hash e2; compute_hash e3]
+
 
     let get_sorted_children e =
         match e with
@@ -300,6 +307,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Array(_, _, _) -> gamma
         | Get (_, _, _) -> gamma
         | Put (_, _, _, _) -> gamma
+
 
     let checkjoin (t : (int * VarSet.t) term) (gamma : context) (rs : res list) : res option =
         let rec check t1 t2 =
