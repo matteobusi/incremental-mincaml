@@ -50,13 +50,13 @@ let rec nodecount e = match e with
   remove_setup_time bench_res [("orig", fun ()->()); ("inc", fun ()->()); ("einc", fun () -> (let copy_cache = IncrementalFunAlgorithm.get_empty_cache nc in ignore(copy_cache)))] *)
 
 (*
-  Very simple cleanup that removes the samples whose rate is not within a 2*sigma interval from avg
+  Very simple cleanup that removes the samples whose rate is not within a sigma interval from avg
 *)
 let cleanup (res : (string * Benchmark2.t list) list) : (string * Benchmark2.t list) list =
   let cpu = cpu_process in
   let not_outlier avg stddev b = (
     let rate = Int64.to_float b.iters /. cpu b in
-      avg-.(2.*.stddev) <= rate && rate <= avg+.(2.*.stddev)
+      avg-.(stddev) <= rate && rate <= avg+.(stddev)
   ) in
   let stats = List.map (comp_rates cpu) res in
     List.map (fun (name, bm) ->
