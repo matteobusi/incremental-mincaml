@@ -57,7 +57,7 @@ let cleanup (res : (string * Benchmark2.t list) list) : (string * Benchmark2.t l
   let not_outlier name avg stddev b = (
     let rate = Int64.to_float b.iters /. cpu b in
     let min, max = avg-.(stddev), avg+.(stddev) in
-      Printf.printf "%s - #%Ld, avg=%f, dev=%f. %f <= %f <= %f? %b" name b.iters avg stddev min rate max (min <= rate && rate <= max);
+      Printf.printf "%s - #%Ld, avg=%f, dev=%f. %f <= %f <= %f? %b\n" name b.iters avg stddev min rate max (min <= rate && rate <= max);
       min <= rate && rate <= max
   ) in
   let stats = List.map (comp_rates cpu) res in
