@@ -79,7 +79,7 @@ let _ =
     let param_list = List.filter (fun (fv_c, depth) -> fv_c <= (BatInt.pow 2 (depth-1))) param_list in
     let len = List.length param_list in
       List.iteri (fun i (fv_c, depth) -> (
-        Printf.eprintf "[%d/%d] --- depth=%d; fv_c=%d;\n" (i+1) len depth fv_c;
+        Printf.printf "[%d/%d] --- depth=%d; fv_c=%d;\n" (i+1) len depth fv_c;
         flush stderr;
         let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
         let lo = register ("orig_" ^ (string_of_int depth) ^ "_" ^ (string_of_int fv_c)) in

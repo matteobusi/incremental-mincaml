@@ -29,7 +29,7 @@ let gen_ibop_ids_ast h ibop k =
 (* Invalidate the entries corresponding to the rightmost subtree at depth d (0 for the root) in e to simulate a modification to e *)
 let rec simulate_modification cache e d =
   let rec invalidate_cache cache e =
-    Hashtbl.remove_all cache (fst (term_getannot e));
+    Cache.remove_all cache (fst (term_getannot e));
     match e with (* Restricted to IBop and Var *)
     | Var(id, _) -> ()
     | IBop(op, l, r, _) -> invalidate_cache cache l; invalidate_cache cache r
@@ -38,7 +38,7 @@ let rec simulate_modification cache e d =
   match (e, d) with
   | (_, 0) -> invalidate_cache cache e
   | (Var(_, _), _) -> failwith "simulate_modification: d is too big!"
-  | (IBop(_, _, r, _), _) ->  Hashtbl.remove_all cache (fst (term_getannot e)); simulate_modification cache r (d-1)
+  | (IBop(_, _, r, _), _) ->  Cache.remove_all cache (fst (term_getannot e)); simulate_modification cache r (d-1)
   | _ -> failwith "simulate_modification: unsupported aAST."
 
 (*

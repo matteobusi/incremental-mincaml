@@ -38,4 +38,4 @@ let _ =
             exit 0
         end
     else
-        Printf.eprintf "Usage:\n %s file1.ml file2.ml\n" Sys.argv.(0)
+        Printf.printf "Usage:\n %s file1.ml file2.ml\n" Sys.argv.(0)

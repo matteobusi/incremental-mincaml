@@ -173,6 +173,7 @@ let setup_loop n setup = runloop 0L n setup (fun () -> ())
 let timeit n f setup =
   let bn = null_loop n in
   let bm = runloop n n f setup in
+  (* let bs = null_t in *)
   let bs = setup_loop n setup in
   let tmp = pos_sub bm bs in (* approx: removes the setup time from total *)
     pos_sub tmp bn (* time of function minus setup and null-loop *),
