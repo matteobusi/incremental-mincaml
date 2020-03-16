@@ -90,16 +90,75 @@ let bench_original_vs_inc_mod e gamma_init nc d r t =
     ] in
     cleanup res *)
 
-let latency_inc e gamma_init nc d =
+
+let ratio_sub a b =
+  let r = Int64.to_float(a.iters) /. Int64.to_float(b.iters) in
+  { wall = a.wall -. (r *. b.wall);       utime = a.utime -. (r *. b.utime);
+    stime = a.stime -. (r *. b.stime);    cutime = a.cutime -. (r *. b.cutime);
+    cstime = a.cstime -. (r *. b.cstime); iters = a.iters }
+
+let rm_setup nn n1 n2 rl =
+  let _, bm1 = List.find (fun (n, _) -> String.equal n1 n) rl in
+  let _, bm2 = List.find (fun (n, _) -> String.equal n2 n) rl in
+    (nn, List.mapi (fun i _ -> ratio_sub (List.at bm1 i) (List.at bm2 i)) bm1)
+
+let throughput_inc e gamma_init nc d =
   let empty_cache = IncrementalFunAlgorithm.get_empty_cache nc in
   let inv_cache = IncrementalFunAlgorithm.get_empty_cache nc in
   ignore (IncrementalFunAlgorithm.build_cache e gamma_init inv_cache);
-  (* simulate_modification inv_cache e d; *)
-  let wc = Cache.copy inv_cache in
-    latencyN 1000L [
-      ("simmod", (fun () -> IncrementalFunAlgorithm.typing (simulate_modification inv_cache e d; inv_cache) gamma_init e), ());
-      ("double_cache", (fun () -> IncrementalFunAlgorithm.typing inv_cache gamma_init e ~wcache:wc), ());
-    ]
+  simulate_modification inv_cache e d;
+  let wc = IncrementalFunAlgorithm.Cache.copy inv_cache in
+  let res_bench = throughputN ~repeat:10 1 [
+      ("cpinv+type",
+        (fun () ->
+          let cache = IncrementalFunAlgorithm.Cache.copy inv_cache in
+            ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)), ());
+      ("cpinv",
+        (fun () -> (let cache = IncrementalFunAlgorithm.Cache.copy inv_cache in ignore ())), ());
+      ("inv+type",
+        (fun () ->
+          let cache = (simulate_modification inv_cache e d; inv_cache) in
+            ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)), ());
+      ("inv",
+        (fun () -> (let cache = (simulate_modification inv_cache e d; inv_cache) in ignore ())), ());
+      ("bc+inv+type",
+        (fun () ->
+          let cache = IncrementalFunAlgorithm.get_empty_cache nc in
+            ignore(IncrementalFunAlgorithm.build_cache e gamma_init cache);
+            simulate_modification cache e d;
+            ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)), ());
+      ("bc+inv",
+        (fun () ->
+          let cache = IncrementalFunAlgorithm.get_empty_cache nc in
+            ignore(IncrementalFunAlgorithm.build_cache e gamma_init cache);
+            simulate_modification cache e d;
+            ignore()), ());
+      ("double_cache",
+        (fun () -> ignore(IncrementalFunAlgorithm.typing inv_cache gamma_init e ~wcache:wc)), ())
+    ] in
+  let inv_cache = IncrementalFunAlgorithm.get_empty_cache nc in
+  ignore (IncrementalFunAlgorithm.build_cache e gamma_init inv_cache);
+  simulate_modification inv_cache e d;
+  (* let res_bench2 = Benchmark2.throughputN ~repeat:10 1 [
+      ("cpinv+type-cpinv2",
+        (fun cache -> ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)),
+        (fun () -> IncrementalFunAlgorithm.Cache.copy inv_cache));
+      ("inv+type-inv2",
+        (fun cache -> ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)),
+        (fun () -> simulate_modification inv_cache e d; inv_cache));
+      ("bc+inv+type-bc+inv2",
+        (fun cache -> ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)),
+        (fun () ->
+          let cache = IncrementalFunAlgorithm.get_empty_cache nc in
+            ignore(IncrementalFunAlgorithm.build_cache e gamma_init cache);
+            simulate_modification cache e d;
+            cache));
+    ] in *)
+  let res_bench = (rm_setup "cpinv+type-cpinv" "cpinv+type" "cpinv" res_bench)::
+    (rm_setup "inv+type-inv" "inv+type" "inv" res_bench)::
+    (rm_setup "bc+inv+type-bc+inv" "bc+inv+type" "bc+inv" res_bench)::
+    res_bench in
+  res_bench
 
 let gen_list min max next =
   let rec gen_aux curr =
@@ -123,12 +182,13 @@ let print_res ?(inv_depth=(-1)) csv results repeat time transf fv_c depth =
     (Printf.printf "transf=%s; fv_c=%d; depth=%d; inv_depth=%d\n" transf fv_c depth inv_depth; (results |> tabulate))
 
 let _ =
-  let e = Generator.gen_ibop_ids_ast 16 "+" 32768 in
+  let e = Generator.gen_ibop_ids_ast 14 "+" 8192 in
   let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
   let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
   let nc = nodecount e in
-  let res = latency_inc e gamma_init nc 1 in
-    print_newline (); tabulate res
+  let res = throughput_inc e gamma_init nc 1 in
+    print_newline (); tabulate res;
+    (* print_newline (); Benchmark2.tabulate res'; *)
 
 (* let _ =
   if Array.length Sys.argv < 6 then

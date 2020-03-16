@@ -11,7 +11,7 @@ struct
     module Cache = Hashtbl.Make(struct
             type t = int
             let equal i j = i=j
-            let hash i = i land max_int
+            let hash = Hashtbl.hash_param max_int max_int (*i land max_int*)
           end)
 
     (* Reporting facilities, this is unneeded in a real-world incrementalizer *)
@@ -28,7 +28,7 @@ struct
     end
     let report = IncrementalReport.create ()
 
-    let get_empty_cache sz : (int, L.context*L.res) Cache.t = Cache.create sz
+    let get_empty_cache sz : (L.context * L.res) Cache.t = Cache.create sz
 
     let build_cache t gamma cache =
         (* Same Original.TypeAlgorithm.typing but returns an aAST *)
