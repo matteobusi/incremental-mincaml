@@ -35,10 +35,10 @@ let rec nodecount e = match e with
   | Get (e1, e2, annot) -> nodecount e1 + nodecount e2
   | Put (e1, e2, e3, annot) -> nodecount e1 + nodecount e2 + nodecount e3
 
-let throughput_original_vs_inc e gamma_init inv_depth_list =
+let throughput_original_vs_inc quota verbosity e gamma_init inv_depth_list =
   let nc = nodecount e in
   let measures = Bench.measure
-    ~run_config:(Core_bench.Std.Bench.Run_config.create ~verbosity:Core_bench.Verbosity.Quiet ())
+    ~run_config:(Core_bench.Std.Bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
     [
     Bench.Test.create ~name:"orig"
         (fun () -> OriginalFunAlgorithm.typing gamma_init e);
@@ -74,14 +74,10 @@ let throughput_original_vs_inc e gamma_init inv_depth_list =
   let results = List.map Bench.analyze measures in
   let results = List.filter_map
     (fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
-      | Error err -> Printf.eprintf "Error %s\n%!" (Core.Error.to_string_hum err); None
+      | Error err -> Printf.printf "Error %s\n%!" (Core.Error.to_string_hum err); None
       | Ok r -> Some r) results in
   let sexp_res = Core_bench.Simplified_benchmark.to_sexp results in
-  (* This fixes the extra open/close parentheses in the output of to_string *)
-  let rec printer sexp = match sexp with
-        | Core.Sexp.Atom s -> Printf.printf "%s\n" s
-        | Core.Sexp.List tl -> (List.iter (fun t -> Printf.printf "%s\n" (Core.Sexp.to_string_mach t)) tl) in
-  printer sexp_res
+    TabRes.print_table (TabRes.table_of_sexp sexp_res)
 
 let gen_list min max next =
   let rec gen_aux curr =
@@ -93,23 +89,23 @@ let rec cartesian a b = match b with
 | be :: bs -> (List.map (fun ae -> (be, ae)) a) @ (cartesian a bs)
 
 let _ =
-  if Array.length Sys.argv < 6 then
+  if Array.length Sys.argv < 4 then
     Printf.printf "%s quota min_depth max_depth\n" Sys.argv.(0)
   else
-    let quota, min_depth, max_depth = int_of_string Sys.argv.(1), int_of_string Sys.argv.(2), int_of_string Sys.argv.(3) in
+    let quota, min_depth, max_depth = Core_bench.Bench.Quota.of_string Sys.argv.(1), int_of_string Sys.argv.(2), int_of_string Sys.argv.(3) in
     let depth_list = gen_list min_depth max_depth (fun n -> n+2) in  (* Seems that big AST have ~20k nodes, cfr. [Erdweg et al.] *)
     let len = List.length depth_list in
     List.iteri (fun i depth -> (
       let fv_c = BatInt.pow 2 (depth-1) in
-      let inv_depth_list = [1; 2; 3] @ gen_list 4 depth (fun n -> n + 2) in
-      Printf.eprintf "============= BEGIN: [%d/%d] -- depth=%d; fv_c=%d =============\n" (i+1) len depth fv_c;
-      flush stderr;
+      let inv_depth_list = [1; 2; 3] @ gen_list 4 (depth - 1) (fun n -> n + 2) in
+      Printf.printf "=== BEGIN: [%d/%d] -- depth=%d; fv_c=%d ===\n" (i+1) len depth fv_c;
+      flush stdout;
       let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
       let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
       let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
-      throughput_original_vs_inc e gamma_init inv_depth_list;
-      Printf.eprintf "============= END: [%d/%d] -- depth=%d; fv_c=%d =============\n" (i+1) len depth fv_c;
-      flush stderr))
+      throughput_original_vs_inc quota Core_bench.Verbosity.Low e gamma_init inv_depth_list;
+      Printf.printf "=== END: [%d/%d] -- depth=%d; fv_c=%d ===\n" (i+1) len depth fv_c;
+      flush stdout))
     depth_list
 
 (*  (* Must use either Std.Hashtbl or Batteries WeakHashtbl for caches! *)
