@@ -35,7 +35,6 @@ let just_cache e l =
       ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
     exit l
 
-
 let gen_list min max next =
   let rec gen_aux curr =
     if curr >= max then [max] else curr :: (gen_aux (next curr))

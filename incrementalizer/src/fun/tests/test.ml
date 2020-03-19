@@ -96,7 +96,7 @@ let check_cache_result file =
   let (te, aast, cache) = inc_analyze_expr file in
   let annot_list = build_annot_list aast in
   assert_bool ("[Cache] BuildCache wrong type at root: " ^ file) (te = fst (term_getannot aast));
-  assert_bool ("[Cache] Failed: " ^ file) ((List.for_all (fun (tau, (hash, fv)) -> (snd (Cache.find cache hash)) = tau) annot_list))
+  assert_bool ("[Cache] Failed: " ^ file) ((List.for_all (fun (tau, (hash, fv)) -> (snd (IncrementalFunAlgorithm.Cache.find cache hash)) = tau) annot_list))
 
 let run fv_c depth =
   (* Fill up the initial gamma with needed identifiers *)

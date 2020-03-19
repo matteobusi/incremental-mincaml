@@ -35,8 +35,25 @@ let rec nodecount e = match e with
 
 (*
   Very simple cleanup that removes the samples whose rate is not within a sigma interval from avg
+
+  Functions comp_rates and cpu_process taken from Benchmark library.
 *)
-(* let cleanup (res : (string * Benchmark.t list) list) : (string * Benchmark.t list) list =
+let comp_rates cpu (name, bm) =
+  let rec loop n m s = function
+    | [] -> (name, n, m, s)
+    | b :: tl ->
+        let rate = Int64.to_float b.iters /. cpu b in
+        let n' = n + 1 in
+        let m' = m +. (rate -. m) /. (float n') in
+        let s' = s +. (rate -. m) *. (rate -. m') in
+        loop n' m' s' tl in
+  match bm with
+  | [] -> (name, 0, nan, 0.) (* NaN used for no-data *)
+  | b :: tl -> loop 1 (Int64.to_float b.iters /. (cpu b +. 1e-15)) 0. tl
+
+let cpu_process b = b.utime +. b.stime
+
+let cleanup (res : (string * Benchmark.t list) list) : (string * Benchmark.t list) list =
   let cpu = cpu_process in
   let not_outlier name avg sd b = (
     let rate = Int64.to_float b.iters /. cpu b in
@@ -51,114 +68,41 @@ let rec nodecount e = match e with
       let cleaned = List.filter (not_outlier name avg sd) bm in
         Printf.printf "Keeping %d/%d samples.\n" (List.length cleaned) (List.length bm);
         (name, cleaned)
-      ) res *)
+      ) res
 
-(* let bench_original_vs_inc e gamma_init nc r t =
-  (* These are just to avoid multiple recomputations *)
-  let full_cache = IncrementalFunAlgorithm.get_empty_cache nc in
-  ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
-  let res = throughputN ~repeat:r t
-  [
-    ("orig", (* Original algorithm *)
-      (fun _ -> ignore (OriginalFunAlgorithm.typing gamma_init e)),
-      (fun () -> ()));
-    ("inc",  (* Incremental algorithm w. full cache *)
-      (fun _ -> ignore (IncrementalFunAlgorithm.typing full_cache gamma_init e)),
-      (fun () -> ()));
-    ("einc", (* Incremental algorithm w. emtpy cache *)
-      (fun cache -> ignore (IncrementalFunAlgorithm.typing (IncrementalFunAlgorithm.get_empty_cache nc) gamma_init e)),
-      (fun () -> ()))
-  ] in
-  cleanup res
+let op o a b =
+  assert(a.iters = b.iters);
+  { wall = o a.wall b.wall;       utime = o a.utime b.utime;
+    stime = o a.stime b.stime;    cutime = o a.cutime b.cutime;
+    cstime = o a.cstime b.cstime; iters = a.iters }
 
-let bench_original_vs_inc_mod e gamma_init nc d r t =
-  let empty_cache = IncrementalFunAlgorithm.get_empty_cache nc in
-  let inv_cache = IncrementalFunAlgorithm.get_empty_cache nc in
-  ignore (IncrementalFunAlgorithm.build_cache e gamma_init inv_cache);
-  simulate_modification inv_cache e d;
-  let res = throughputN ~repeat:r t
-    [
-      ("orig",
-        (fun _ -> ignore (OriginalFunAlgorithm.typing gamma_init e)),
-        (fun () -> empty_cache)
-      );
-      ("inc",
-        (fun inv_cache -> ignore (IncrementalFunAlgorithm.typing inv_cache gamma_init e)),
-        (fun () -> simulate_modification inv_cache e d; inv_cache)
-        (* ok because the cache after incr. typing is the same as the initial full cache - just in the setting of these experiments ! *)
-      )
-    ] in
-    cleanup res *)
+let scalar_op o a n =
+  { wall = o a.wall (Int64.to_float n);       utime = o a.utime (Int64.to_float n) ;
+    stime = o a.stime (Int64.to_float n) ;    cutime = o a.cutime (Int64.to_float n) ;
+    cstime = o a.cstime (Int64.to_float n); iters = a.iters }
 
+let sub = op (-.)
+let add = op (+.)
+let smul = scalar_op ( *. )
+let sdiv = scalar_op ( /. )
+let null_t i =
+  { wall = 0.; utime = 0.; stime = 0.; cutime = 0.; cstime = 0.; iters = i }
 
-let ratio_sub a b =
-  let r = Int64.to_float(a.iters) /. Int64.to_float(b.iters) in
-  { wall = a.wall -. (r *. b.wall);       utime = a.utime -. (r *. b.utime);
-    stime = a.stime -. (r *. b.stime);    cutime = a.cutime -. (r *. b.cutime);
-    cstime = a.cstime -. (r *. b.cstime); iters = a.iters }
+let scale_to_iter iter a = { (sdiv (smul a iter) a.iters) with iters = iter }
 
-let rm_setup nn n1 n2 rl =
-  let _, bm1 = List.find (fun (n, _) -> String.equal n1 n) rl in
-  let _, bm2 = List.find (fun (n, _) -> String.equal n2 n) rl in
-    (nn, List.mapi (fun i _ -> ratio_sub (List.at bm1 i) (List.at bm2 i)) bm1)
+let compute_avg iter bm =
+  let len = List.length bm in
+  let scaled = List.map (scale_to_iter iter) bm in
+  let sum = List.fold_left add (null_t iter) scaled in
+    sdiv sum (Int64.of_int len)
 
-let throughput_inc e gamma_init nc d =
-  let empty_cache = IncrementalFunAlgorithm.get_empty_cache nc in
-  let inv_cache = IncrementalFunAlgorithm.get_empty_cache nc in
-  ignore (IncrementalFunAlgorithm.build_cache e gamma_init inv_cache);
-  simulate_modification inv_cache e d;
-  let wc = IncrementalFunAlgorithm.Cache.copy inv_cache in
-  let res_bench = throughputN ~repeat:10 1 [
-      ("cpinv+type",
-        (fun () ->
-          let cache = IncrementalFunAlgorithm.Cache.copy inv_cache in
-            ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)), ());
-      ("cpinv",
-        (fun () -> (let cache = IncrementalFunAlgorithm.Cache.copy inv_cache in ignore ())), ());
-      ("inv+type",
-        (fun () ->
-          let cache = (simulate_modification inv_cache e d; inv_cache) in
-            ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)), ());
-      ("inv",
-        (fun () -> (let cache = (simulate_modification inv_cache e d; inv_cache) in ignore ())), ());
-      ("bc+inv+type",
-        (fun () ->
-          let cache = IncrementalFunAlgorithm.get_empty_cache nc in
-            ignore(IncrementalFunAlgorithm.build_cache e gamma_init cache);
-            simulate_modification cache e d;
-            ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)), ());
-      ("bc+inv",
-        (fun () ->
-          let cache = IncrementalFunAlgorithm.get_empty_cache nc in
-            ignore(IncrementalFunAlgorithm.build_cache e gamma_init cache);
-            simulate_modification cache e d;
-            ignore()), ());
-      ("double_cache",
-        (fun () -> ignore(IncrementalFunAlgorithm.typing inv_cache gamma_init e ~wcache:wc)), ())
-    ] in
-  let inv_cache = IncrementalFunAlgorithm.get_empty_cache nc in
-  ignore (IncrementalFunAlgorithm.build_cache e gamma_init inv_cache);
-  simulate_modification inv_cache e d;
-  (* let res_bench2 = Benchmark2.throughputN ~repeat:10 1 [
-      ("cpinv+type-cpinv2",
-        (fun cache -> ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)),
-        (fun () -> IncrementalFunAlgorithm.Cache.copy inv_cache));
-      ("inv+type-inv2",
-        (fun cache -> ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)),
-        (fun () -> simulate_modification inv_cache e d; inv_cache));
-      ("bc+inv+type-bc+inv2",
-        (fun cache -> ignore(IncrementalFunAlgorithm.typing cache gamma_init e ~wcache:cache)),
-        (fun () ->
-          let cache = IncrementalFunAlgorithm.get_empty_cache nc in
-            ignore(IncrementalFunAlgorithm.build_cache e gamma_init cache);
-            simulate_modification cache e d;
-            cache));
-    ] in *)
-  let res_bench = (rm_setup "cpinv+type-cpinv" "cpinv+type" "cpinv" res_bench)::
-    (rm_setup "inv+type-inv" "inv+type" "inv" res_bench)::
-    (rm_setup "bc+inv+type-bc+inv" "bc+inv+type" "bc+inv" res_bench)::
-    res_bench in
-  res_bench
+let rm_setup final_name tot_name setup_name bm_list =
+  let _, tot_bm = List.find (fun (name, _) -> String.equal tot_name name) bm_list in
+  let _, setup_bm = List.find (fun (name, _) -> String.equal setup_name name) bm_list in
+  let max = List.max (List.map (fun bm -> bm.iters) tot_bm) in
+  let rl = List.remove_assoc tot_name (List.remove_assoc setup_name bm_list) in
+  let tot_avg, setup_avg = (compute_avg max tot_bm), (compute_avg max setup_bm) in
+    (final_name, [sub tot_avg setup_avg])::rl
 
 let gen_list min max next =
   let rec gen_aux curr =
@@ -169,33 +113,49 @@ let rec cartesian a b = match b with
 | [] -> []
 | be :: bs ->  (List.map (fun ae -> (be, ae)) a) @ (cartesian a bs)
 
-let print_res ?(inv_depth=(-1)) csv results repeat time transf fv_c depth =
+let print_res csv res repeat time fv_c depth inv_depth =
+  let res = rm_setup "incr" "setup+incr" "setup" res in
   if csv then
-    List.iter (
-      fun (name, reslist) ->
-      List.iter (
-        fun res ->
-        let rate = (Int64.to_float res.iters) /. (res.utime +. res.stime) in
-          Printf.eprintf "%s, %d, %d, %s, %d, %d, %d, %f\n" name repeat time transf fv_c depth inv_depth rate) reslist; flush stderr
-      ) results
+    let stats = List.map (comp_rates cpu_process) res in
+    List.iter
+      (fun (name, _, avg, _) -> Printf.eprintf "%s, %d, %d, %d, %f\n" name depth fv_c inv_depth avg; flush stderr)
+      stats
   else
-    (Printf.printf "transf=%s; fv_c=%d; depth=%d; inv_depth=%d\n" transf fv_c depth inv_depth; (results |> tabulate))
+    (Printf.printf "fv_c=%d; depth=%d; inv_depth=%d\n" fv_c depth inv_depth; (tabulate res))
+
+let throughput_original_vs_inc_mod e gamma_init d r t =
+  let nc = nodecount e in
+  let full_cache = IncrementalFunAlgorithm.get_empty_cache nc in
+  ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
+  let res_bench = throughputN ~repeat:r t [
+      ("orig",
+        (fun () -> ignore(OriginalFunAlgorithm.typing gamma_init e)), ());
+      ("incr-fullcache",  (* Incremental algorithm w. full cache *)
+        (fun _ -> ignore (IncrementalFunAlgorithm.typing full_cache gamma_init e)), ());
+      ("incr-emptycache", (* Incremental algorithm w. emtpy cache *)
+        (fun _ -> ignore (IncrementalFunAlgorithm.typing (IncrementalFunAlgorithm.get_empty_cache nc) gamma_init e)), ());
+      ("setup+incr",
+        (fun () ->
+          let cache = IncrementalFunAlgorithm.get_empty_cache nc in
+            ignore(IncrementalFunAlgorithm.build_cache e gamma_init cache);
+            simulate_modification cache e d;
+            ignore(IncrementalFunAlgorithm.typing cache gamma_init e)), ());
+      ("setup",
+        (fun () ->
+          let cache = IncrementalFunAlgorithm.get_empty_cache nc in
+            ignore(IncrementalFunAlgorithm.build_cache e gamma_init cache);
+            simulate_modification cache e d;
+            ignore()), ());
+  ] in
+  let res_bench = cleanup res_bench in
+    res_bench
 
 let _ =
-  let e = Generator.gen_ibop_ids_ast 14 "+" 8192 in
-  let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
-  let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
-  let nc = nodecount e in
-  let res = throughput_inc e gamma_init nc 1 in
-    print_newline (); tabulate res;
-    (* print_newline (); Benchmark2.tabulate res'; *)
-
-(* let _ =
   if Array.length Sys.argv < 6 then
     Printf.printf "%s repeat time min_depth max_depth csv\n" Sys.argv.(0)
   else
     let repeat, time, min_depth, max_depth, csv = int_of_string Sys.argv.(1), int_of_string Sys.argv.(2), int_of_string Sys.argv.(3), int_of_string Sys.argv.(4), bool_of_string Sys.argv.(5) in
-    let depth_list = gen_list min_depth max_depth (fun n -> n+2) in  (* Seems that big AST trees has ~20k nodes, [Erdweg et al., §6] in Paper *)
+    let depth_list = gen_list min_depth max_depth (fun n -> n+2) in  (* Seems that big AST have ~20k nodes, cfr. [Erdweg et al.] *)
     let fv_c_list =  1 :: (gen_list 4 (BatInt.pow 2 (max_depth-1)) (fun n -> 2*n)) in (* Saturating the leaves w all different variables: 2^(depth-1) *)
     let inv_depth_list =  [1; 2; 3] @ gen_list 4 max_depth (fun n -> n + 2) in (* Invalidating a tree of 2^(depth - inv_depth) - 1 nodes, i.e. ~2^(-inv_depth) % *)
     let tpl_cmp (a_d, (a_fvc, a_id)) (b_d, (b_fvc, b_id)) = if (a_id = b_id && a_fvc=b_fvc && a_d = b_d) then 0 else -1 in
@@ -203,27 +163,16 @@ let _ =
     let param_list = List.filter (fun (depth, (fv_c, inv_depth)) -> fv_c <= (BatInt.pow 2 (depth-1)) && inv_depth < depth) param_list in
     let len = List.length param_list in
     if csv then
-      (Printf.eprintf "name, repeat, time, transf, fvc, depth, inv_depth, rate\n"; flush stderr)
+      (Printf.eprintf "name, depth, fvc, inv_depth, avg, sd\n"; flush stderr)
     else ();
     List.iteri (fun i (depth, (fv_c, inv_depth)) -> (
-      Printf.printf "[%d/%d] --- depth=%d; fv_c=%d; inv_depth=%d;\n" (i+1) len depth fv_c inv_depth;
+      Printf.printf "============= [%d/%d] -- depth=%d; fv_c=%d; inv_depth=%d =============\n" (i+1) len depth fv_c inv_depth;
       flush stdout;
       let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
       let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
       let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
-      let nc = nodecount e in
-      (* Original typing algorithm vs. Incremental w full cache & no modifications vs. Incremental w empty cache *)
-      Printf.printf "transf=id...";
-      flush stdout;
-      print_res csv (bench_original_vs_inc e gamma_init nc repeat time) repeat time "id" fv_c depth;
-      Printf.printf "done\n";
-      flush stdout;
-
-      (* (Simulated) code generic modification: full re-typing vs. incremental w full cache *)
-      Printf.printf "transf=mod...";
-      flush stdout;
-      print_res csv (bench_original_vs_inc_mod e gamma_init nc inv_depth repeat time) repeat time "mod" fv_c depth ~inv_depth:inv_depth;
-      Printf.printf "done\n";
-      flush stdout;
+        print_res csv (throughput_original_vs_inc_mod e gamma_init inv_depth repeat time) repeat time fv_c depth inv_depth;
+        Printf.printf "============= [%d/%d] DONE =============\n" (i+1) len;
+        flush stdout;
       )
-    ) param_list *)
+    ) param_list

@@ -195,36 +195,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
         in free_variables_cps e (fun d -> d)
 
 
-    let rec compute_hash e =
-        let hash_of_fundef ({name=(id, rt); args=xs; body=e}) =
-            let hash_id = Hashing.hash id in
-            let hash_tr = Hashing.hash rt in
-            let hash_args = Hashing.combine_hashes (List.map (fun (id, t) ->
-                                    Hashing.combine_hashes [Hashing.hash id; Hashing.hash t]) xs) in
-            Hashing.combine_hashes [hash_id ; hash_tr; hash_args; compute_hash e] in
-        match e with
-        | Unit(_) -> Hashing.hash "unit"
-        | Bool(v, _) -> Hashing.hash v
-        | Int(v, _) -> Hashing.hash v
-        | Float(v, _) -> Hashing.hash v
-        | Var(id, _) -> Hashing.hash id
-        | Not(e1, _) -> Hashing.combine_hashes [Hashing.hash "not"; compute_hash e1]
-        | Neg(e1, _) -> Hashing.combine_hashes [Hashing.hash "neg"; compute_hash e1]
-        | FNeg(e1, _) -> Hashing.combine_hashes [Hashing.hash "fneg"; compute_hash e1]
-        | IBop(s, e1, e2, _)
-        | FBop(s, e1, e2, _)
-        | Rel(s, e1, e2, _) -> Hashing.combine_hashes [Hashing.hash s; compute_hash e1; compute_hash e2]
-        | If(b, e1, e2, _) -> Hashing.combine_hashes [compute_hash b; compute_hash e1; compute_hash e2]
-        | Let(s, e1, e2, _) -> Hashing.combine_hashes [Hashing.hash "let"; Hashing.hash s; compute_hash e1; compute_hash e2]
-        | LetRec(fundef, e1, _) -> Hashing.combine_hashes [Hashing.hash "lrec"; hash_of_fundef fundef; compute_hash e1]
-        | App(e1, e2, _) -> Hashing.combine_hashes ([Hashing.hash "app" ; compute_hash e1] @ (List.map compute_hash e2))
-        | Tuple(es, _) -> Hashing.combine_hashes ((Hashing.hash "tuple")::(List.map compute_hash es))
-        | LetTuple(pat, e1, e2, _) ->
-            Hashing.combine_hashes ((Hashing.hash "ltup") :: (compute_hash e1) :: (compute_hash e2) :: (List.map Hashing.hash pat))
-        | Array(e1, e2, _) -> Hashing.combine_hashes [Hashing.hash "mkar"; compute_hash e1; compute_hash e2]
-        | Get(e1, e2, _) -> Hashing.combine_hashes [Hashing.hash "get"; compute_hash e1; compute_hash e2]
-        | Put(e1, e2, e3, _) -> Hashing.combine_hashes [Hashing.hash "put"; compute_hash e1; compute_hash e2; compute_hash e3]
-
+    let rec compute_hash e = Hashtbl.hash_param max_int max_int e
 
     let get_sorted_children e =
         match e with
@@ -250,17 +221,10 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Get(e1, e2, _) -> [(0, e1); (1, e2)]
         | Put(e1, e2, e3, _) -> [(0, e1); (1, e2); (2, e3)]
 
-
     let compat gamma gamma' at =
-        (*
-            Straightorward implementation from the theory:
-        *)
-        let fv = snd (term_getannot at) in VarSet.for_all (fun v -> (FunContext.find gamma v) = (FunContext.find gamma' v)) fv
-        (*
-        Sometimes faster implementation:
-        *)
-        (* BatEnum.equal (fun (k1,v1) (k2,v2) ->  if (VarSet.mem k2 (snd (term_getannot at))) then v1=v2 else true) (FunContext.enum gamma) (FunContext.enum gamma') *)
-
+        (* Straightorward implementation from the theory: *)
+        let fv = snd (term_getannot at) in
+            VarSet.for_all (fun v -> (FunContext.find_option gamma v) = (FunContext.find_option gamma' v)) fv
 
     (* i indicates that the i-th element is being processed (0-based) *)
     let tr (i : int) (ti : (int * VarSet.t) term) (t : (int * VarSet.t) term) (gamma : context) (rs : res list) : context =

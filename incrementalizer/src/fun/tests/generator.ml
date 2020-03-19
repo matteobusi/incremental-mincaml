@@ -4,8 +4,6 @@ module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecifi
 module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
 
 open FunSpecification.FunSpecification
-
-open Hashing
 open VarSet
 
 (*
@@ -38,5 +36,7 @@ let rec simulate_modification cache e d =
   match (e, d) with
   | (_, 0) -> invalidate_cache cache e
   | (Var(_, _), _) -> failwith "simulate_modification: d is too big!"
-  | (IBop(_, _, r, _), _) ->  IncrementalFunAlgorithm.Cache.remove_all cache (fst (term_getannot e)); simulate_modification cache r (d-1)
+  | (IBop(_, _, r, _), _) ->
+    IncrementalFunAlgorithm.Cache.remove_all cache (fst (term_getannot e));
+    simulate_modification cache r (d-1)
   | _ -> failwith "simulate_modification: unsupported aAST."

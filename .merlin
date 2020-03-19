@@ -7,6 +7,8 @@ PKG ounit2
 PKG benchmark
 PKG batteries
 PKG landmarks
+PKG core_bench
+PKG core
 
 B incrementalizer/_build
 B incrementalizer/_build/src/fun
