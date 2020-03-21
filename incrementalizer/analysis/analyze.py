@@ -44,24 +44,24 @@ def plot_on_pdf (filename, res):
             res_3 = res_2[res_2["fvc"] == fvc]
             with PdfPages(filename.format(depth, fvc)) as pdf:
                 fig, ax = plt.subplots()
-                add_res_orig = res_3[res_3["name"] == orig_n].drop(["name", "depth", "fvc"], axis=1).groupby(["inv_depth"]).mean().reset_index()
+                add_res_orig = res_3[res_3["name"].str.startswith(orig_n)].drop(["name", "depth", "fvc"], axis=1).groupby(["inv_depth"]).mean().reset_index()
                 add_res_inc  = res_3[res_3["name"].str.startswith(inc_n)].drop(["name", "depth", "fvc"], axis=1).groupby(["inv_depth"]).mean().reset_index()
 
-                # add_res_orig["diffsz"] = depth - add_res_orig["inv_depth"]
+                add_res_orig["diffsz"] = depth - add_res_orig["inv_depth"]
                 add_res_inc["diffsz"] = depth - add_res_inc["inv_depth"]
 
                 add_res_orig = add_res_orig.drop(["inv_depth"], axis=1)
                 add_res_inc = add_res_inc.drop(["inv_depth"], axis=1)
 
                 # Repeat the row
-                rate = add_res_orig["rate"].values[0]
-                add_res_orig = pandas.DataFrame()
-                for dsz in add_res_inc.drop(["rate"], axis=1).values:
-                    add_res_orig = add_res_orig.append({"diffsz":int(dsz[0]), "rate":rate}, ignore_index=True)
+                # rate = add_res_orig["rate"].values[0]
+                # add_res_orig = pandas.DataFrame()
+                # for dsz in add_res_inc.drop(["rate"], axis=1).values:
+                #     add_res_orig = add_res_orig.append({"diffsz":int(dsz[0]), "rate":rate}, ignore_index=True)
 
                 # plt.title("transf = {}; depth = {}; fv_c = {}".format(transf, depth, fvc))
-                add_res_orig.plot(x="diffsz", y="rate", ax=ax, label="std", marker='+', color='blue', linewidth=2, linestyle='dashed') # BLUE
-                add_res_inc.plot(x="diffsz", y="rate", ax=ax, label="inc", marker='o', color='orange', linewidth=2) # ORANGE
+                add_res_orig.plot(x="diffsz", y="rate", ax=ax, label=orig_n, marker='+', color='blue', linewidth=2, linestyle='dashed') # BLUE
+                add_res_inc.plot(x="diffsz", y="rate", ax=ax, label=inc_n, marker='o', color='orange', linewidth=2) # ORANGE
 
                 plt.xticks(np.arange(min(add_res_orig["diffsz"]), max(add_res_orig["diffsz"]) + 1, 1.0))
                 # if depth == 12 and (fvc==512 or fvc==2048 or fvc==1024):

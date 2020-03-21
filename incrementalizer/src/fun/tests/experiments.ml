@@ -49,8 +49,9 @@ let throughput_original_vs_inc quota verbosity e gamma_init inv_depth_list =
   let measures = Bench.measure
     ~run_config:(Core_bench.Std.Bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
     [
-      Bench.Test.create ~name:orig_n
-        (fun () -> OriginalFunAlgorithm.typing gamma_init e);
+      Bench.Test.create_indexed ~name:orig_n ~args:inv_depth_list
+        (fun d ->
+          Core.Staged.stage(fun () -> OriginalFunAlgorithm.typing gamma_init e));
       Bench.Test.create ~name:finc_n
         (let cache = IncrementalFunAlgorithm.get_empty_cache nc in
             ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
@@ -119,7 +120,7 @@ let extract_minimal (results : Core_bench.Simplified_benchmark.Results.t) depth 
       name = r.full_benchmark_name;
       depth = depth;
       fvc = fvc;
-      inv_depth = if (String.starts_with r.full_benchmark_name setup_n) then snd (split_name r.full_benchmark_name) else (-1);
+      inv_depth = snd (split_name r.full_benchmark_name);
       rate = rate_of_time r.time_per_run_nanos
     }) in
   let to_fix_list = List.filter
