@@ -1,3 +1,0 @@
-true: bin_annot, debug
-<src/**>: include
-<test/**>: include
