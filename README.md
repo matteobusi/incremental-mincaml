@@ -97,7 +97,7 @@ where `min_depth` and `max_depth` specify the size of sythetic programs and `cac
 
 To reproduce the experiments presented of the paper, it is enough to compile `texperiments` and then to run:
 ```
-$ ./texperiments.native 10 8 16 true > results-10-8-16.csv; python analysis/tanalyze.py results-10-8-16.csv /plots
+$ ./texperiments.native 10 8 16 true > results-10-8-16.csv; python analysis/tanalyze.py results-10-8-16.csv plots/
 ```
 It creates a new folder `plots` with all the generated plots and a csv file with the raw results.
 
