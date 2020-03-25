@@ -13,7 +13,7 @@ native: $(TARGET).native
 	ocamlbuild -use-ocamlfind -pkg batteries $@
 
 test: default
-	ocamlbuild -use-ocamlfind -pkg batteries,benchmark,ounit2 $@.native
+	ocamlbuild -use-ocamlfind -pkg batteries,ounit2 $@.native
 
 texperiments:
 	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,core,core_bench texperiments.native
