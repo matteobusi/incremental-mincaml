@@ -1,6 +1,6 @@
 TARGET=main
 
-default: $(TARGET).byte
+default: $(TARGET).native
 
 $(TARGET): default
 
@@ -21,7 +21,7 @@ texperiments:
 mexperiments:
 	ocamlbuild -use-ocamlfind -pkg batteries,landmarks mexperiments.native
 
-all: native
+all: native test mexperiments texperiments
 
 clean:
 	ocamlbuild -clean

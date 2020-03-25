@@ -9,11 +9,12 @@ As an example we also provide the standard and incremental type checker for MinC
 
 The project requires:
 
-- [OCaml >= 4.07.0](http://www.ocaml.org/) standard compilers and tools
-- [OUnit2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library.
-- [Batteries](http://batteries.forge.ocamlcore.org/) OCaml alternative standard library.
-- [Core_bench](https://github.com/janestreet/core_bench) OCaml library for micro-benchmarking.
-- [Landmarks](https://github.com/LexiFi/landmarks) OCaml profiling library.
+- [OCaml = 4.07.1](http://www.ocaml.org/) standard compilers and tools
+- [OUnit2 = 2.2.2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library.
+- [Batteries = 3.0.0](http://batteries.forge.ocamlcore.org/) OCaml alternative standard library.
+- [Core = v0.12.4](https://github.com/janestreet/core) JaneStreet's alternative to OCaml's standard library.
+- [Core_bench = v0.12.0](https://github.com/janestreet/core_bench) OCaml library for micro-benchmarking.
+- [Landmarks = 1.3](https://github.com/LexiFi/landmarks) OCaml profiling library.
 - [Python 3](https://www.python.org/), [Pandas](https://pandas.pydata.org/), [Matplotlib](https://matplotlib.org/) and [NumPy](http://www.numpy.org/) for producing the plots and analyse the data.
 
 ## Building the project #
@@ -74,7 +75,7 @@ To do that the incremental algorithm visited 8 nodes of the syntax tree (out of 
 
 To run the test suite, simply compile the executable as described above and then run the executable:
 ```
-$ ./test.byte
+$ ./test.native
 ```
 
 ## Running the time experiments #
@@ -91,7 +92,7 @@ To run the memory experiments, simply compile the executable as described above 
 ```
 $ OCAML_LANDMARKS=on ./mexperiments.native min_depth max_depth cache
 ```
-where `min_depth` and `max_depth` specify the size of sythetic programs and `cache` is a boolean that controls whether the script should measure the memory overhead of the cache alone or that of the whole incremental run.
+where `min_depth` and `max_depth` specify the size of synthetic programs and `cache` is a boolean that controls whether the script should measure the memory overhead of the cache alone or that of the whole incremental run.
 
 ## Reproducing the experiments #
 
