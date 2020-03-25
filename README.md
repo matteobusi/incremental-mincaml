@@ -59,7 +59,7 @@ where the first argument is the path to a program to be type checked, and the se
 
 When running the ``main.native`` as
 ```
-$ ./main.native examples/fact.ml examples/fact_opt.ml
+$ ./main.native src/fun/examples/fact.ml src/fun/examples/fact_opt.ml
 ```
 the output is
 ```
