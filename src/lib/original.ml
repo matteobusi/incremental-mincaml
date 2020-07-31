@@ -11,7 +11,7 @@ struct
         Printf.printf "\ntyping failed at: %s\n" (L.string_of_term (fun _ _ -> ()) t);
         List.iter (fun t -> Printf.printf "child: %s\n" (L.string_of_term (fun _ _ -> ()) (snd t))) ts;
         List.iter (fun r -> Printf.printf "partial res: %s\n" (L.string_of_type r)) rs;
-        failwith "CheckJoin failed!"
+        failwith "Original: CheckJoin failed!"
       | Some final_res -> final_res)
 
 

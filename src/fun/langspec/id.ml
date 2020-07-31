@@ -5,15 +5,12 @@ open FunSpecification.FunSpecification
 type t = string (* MinCaml *)
 type l = L of string
 
+let counter = ref 0
+
 let rec pp_list = function
   | [] -> ""
   | [x] -> x
   | x :: xs -> x ^ " " ^ pp_list xs
-
-let counter = ref 0
-let genid s =
-  incr counter;
-  Printf.sprintf "%s.%d" s !counter
 
 let rec id_of_typ = function
   | TUnit -> "u"
@@ -29,3 +26,5 @@ let gentmp typ =
   Printf.sprintf "T%s%d" (id_of_typ typ) !counter
 
 let equal = String.equal
+
+let reset () = (counter := 0)

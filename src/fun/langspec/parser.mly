@@ -8,6 +8,7 @@ Improvements/fixes:
 *)
 open Batteries
 open FunSpecification.FunSpecification
+
 %}
 
 /* (* Token definition *) */
@@ -52,6 +53,7 @@ open FunSpecification.FunSpecification
 %token TYPE_BOOL
 %token TYPE_FLOAT
 %token TYPE_UNIT
+%token TYPE_ARRAY
 %token EOF
 
 /* (* Operators priority and associativity *) */
@@ -77,8 +79,10 @@ open FunSpecification.FunSpecification
 
 %%
 
+exp: iexp { Id.reset (); $1 }
+
 simple_exp: /* (* simple expressions *) */
-| LPAREN exp RPAREN
+| LPAREN iexp RPAREN
     { $2 }
 | LPAREN RPAREN
     { Unit () }
@@ -90,86 +94,86 @@ simple_exp: /* (* simple expressions *) */
     { Float($1, ()) }
 | IDENT
     { Var($1, ()) }
-| simple_exp DOT LPAREN exp RPAREN
+| simple_exp DOT LPAREN iexp RPAREN
     {
         Get($1, $4, ())
     }
 
-exp: /* (* Expressions *) */
+iexp: /* (* Expressions *) */
 | simple_exp
     { $1 }
-| NOT exp
+| NOT iexp
     %prec prec_app
     { Not($2, () ) }
-| MINUS exp
+| MINUS iexp
     %prec prec_unary_minus
     { match $2 with
     | Float(f, _) -> Float(-.f, ()) (* e.g. -1.23 *)
     | e -> Neg(e, ()) }
-| exp PLUS exp /* (* Arithmetic operations on integers *) */
+| iexp PLUS iexp /* (* Arithmetic operations on integers *) */
     {
       IBop("+", $1, $3, ())
     }
-| exp MINUS exp
+| iexp MINUS iexp
     {
       IBop("-", $1, $3, ())
     }
-| exp AST exp
+| iexp AST iexp
     {
       IBop("*", $1, $3, ())
     }
-| exp EQUAL exp     /* (* Relational operators *) */
+| iexp EQUAL iexp     /* (* Relational operators *) */
     {
      Rel("=",$1, $3, ())
     }
-| exp LESS_GREATER exp
+| iexp LESS_GREATER iexp
     {
      Not(Rel("=", $1, $3, ()), ())
      }
-| exp LESS exp
+| iexp LESS iexp
     {
      Rel("<", $3, $1, ())
     }
-| exp GREATER exp
+| iexp GREATER iexp
     {
       Rel(">", $1, $3, ())
     }
-| exp LESS_EQUAL exp
+| iexp LESS_EQUAL iexp
     {
     Rel("<=", $1, $3, ())
     }
-| exp GREATER_EQUAL exp
+| iexp GREATER_EQUAL iexp
     {
     Rel(">=", $3, $1, ())
     }
-| IF exp THEN exp ELSE exp
+| IF iexp THEN iexp ELSE iexp
     %prec prec_if
     {
     If($2, $4, $6, ())
     }
-| MINUS_DOT exp
+| MINUS_DOT iexp
     %prec prec_unary_minus
     { FNeg($2, ()) }
-| exp PLUS_DOT exp
+| iexp PLUS_DOT iexp
     {
     FBop("+.",$1, $3, ())
     }
-| exp MINUS_DOT exp
+| iexp MINUS_DOT iexp
     {
     FBop("-.",$1, $3, ())
     }
-| exp AST_DOT exp
+| iexp AST_DOT iexp
     {
     FBop("*.",$1, $3, ())
     }
-| exp SLASH_DOT exp
+| iexp SLASH_DOT iexp
     {
     FBop("/.",$1, $3, ())
     }
-| LET IDENT EQUAL exp IN exp
+| LET IDENT EQUAL iexp IN iexp
     %prec prec_let
     { Let($2, $4, $6, ()) }
-| LET REC fundef IN exp
+| LET REC fundef IN iexp
     %prec prec_let
     { LetRec($3, $5, ()) }
 | simple_exp actual_args
@@ -182,13 +186,13 @@ exp: /* (* Expressions *) */
     {
         Tuple($1, ())
     }
-| LET LPAREN pat RPAREN EQUAL exp IN exp
+| LET LPAREN pat RPAREN EQUAL iexp IN iexp
     {
       LetTuple($3, $6, $8, ())
     }
-| simple_exp DOT LPAREN exp RPAREN LESS_MINUS exp
+| simple_exp DOT LPAREN iexp RPAREN LESS_MINUS iexp
     { Put($1, $4, $7, ()) }
-| exp SEMICOLON exp
+| iexp SEMICOLON iexp
     {
         let nid = Id.gentmp TUnit in
         Let(nid, $1, $3, ())
@@ -201,11 +205,11 @@ exp: /* (* Expressions *) */
         (Printf.sprintf "Parse error at line %d."
            (Parsing.symbol_start_pos ()).pos_lnum) }
 
-fundef: /* (* e.g. f (y_1 : \tau_1, ..., y_n : \tau_n) : \tau_f = ...*) */
-| IDENT formal_args COLON types EQUAL exp
+fundef: /* (* e.g. f (y_1 : \tau_1)  ... (y_n : \tau_n) : \tau_f = ...*) */
+| IDENT formal_args COLON types EQUAL iexp
     { { name = ($1,$4); args = $2; body = $6 } }
 
-formal_args: /* (* e.g. (y_1 : \tau_1, ..., y_n : \tau_n) *) */
+formal_args: /* (* e.g. (y_1 : \tau_1)  ... (y_n : \tau_n) *) */
 | LPAREN IDENT COLON types RPAREN formal_args
     { ($2,$4) :: $6 }
 | LPAREN IDENT COLON types RPAREN
@@ -220,9 +224,9 @@ actual_args:
     { [$1] }
 
 elems:
-| elems COMMA exp
+| elems COMMA iexp
     { $1 @ [$3] }
-| exp COMMA exp
+| iexp COMMA iexp
     { [$1; $3] }
 
 pat:
@@ -242,7 +246,8 @@ types:
     { TFloat }
  | LBRACKET types RBRACKET
     { TArray($2) }
-
+ | types TYPE_ARRAY
+    { TArray($1) }
  | LPAREN ltypes RPAREN
     {
       (* Consider in a special way list of length 1 *)

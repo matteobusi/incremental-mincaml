@@ -5,16 +5,25 @@ module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.
 
 open FunSpecification.FunSpecification
 
+(* This is the runtime needed *)
 let initial_gamma_list = [
+  "print_char" ,     TFun([TInt], TUnit) ;
   "print_int" ,     TFun([TInt], TUnit) ;
-  "print_newline" , TFun([TUnit], TUnit) ;
+  "print_byte" ,    TFun([TInt], TUnit) ; (* *)
+  "print_newline",  TFun([TUnit], TUnit) ;
+  "read_token" ,    TFun([TBool], TInt) ; (* *)
+  "read_int" ,      TFun([TUnit], TInt) ;
+  "read_float" ,    TFun([TUnit], TFloat) ;
   "int_of_float",   TFun([TFloat], TInt) ;
   "float_of_int",   TFun([TInt], TFloat) ;
+  "char_of_int",   TFun([TInt], TInt) ;
   "sin",            TFun([TFloat], TFloat) ;
   "cos",            TFun([TFloat], TFloat) ;
   "sqrt",           TFun([TFloat], TFloat) ;
   "abs_float",      TFun([TFloat], TFloat) ;
   "truncate",       TFun([TFloat], TInt);
+  "floor",          TFun([TFloat], TFloat);
+  "atan",           TFun([TFloat], TFloat);
 ]
 
 let rec nodecount e = match e with
@@ -39,22 +48,94 @@ let rec nodecount e = match e with
   | Get (e1, e2, annot) -> nodecount e1 + nodecount e2
   | Put (e1, e2, e3, annot) -> nodecount e1 + nodecount e2 + nodecount e3
 
+let rec annotate_fv e =
+  match e with
+    | Unit(annot) -> Unit((annot, VarSet.empty))
+    | Bool(v, annot) -> Bool(v, (annot, VarSet.empty))
+    | Int(v, annot) -> Int(v, (annot, VarSet.empty))
+    | Float(v, annot) -> Float(v, (annot, VarSet.empty))
+    | Var(x, annot) -> Var (x, (annot, VarSet.singleton x))
+    | Not(e1, annot) -> let ae1 = annotate_fv e1 in Not (ae1, (annot, snd (term_getannot ae1)))
+    | Neg(e1, annot) -> let ae1 = annotate_fv e1 in Neg (ae1, (annot, snd (term_getannot ae1)))
+    | FNeg(e1, annot) -> let ae1 = annotate_fv e1 in FNeg (ae1, (annot, snd (term_getannot ae1)))
+    | IBop(op, e1, e2, annot) ->
+      let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
+        IBop (op, ae1, ae2, (annot, VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))))
+    | FBop(op, e1, e2, annot) ->
+      let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
+        FBop (op, ae1, ae2, (annot, VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))))
+    | Rel(op, e1, e2, annot) ->
+      let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
+        Rel (op, ae1, ae2, (annot, VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))))
+    | If(e1, e2, e3, annot) ->
+      let ae1, ae2, ae3 = annotate_fv e1, annotate_fv e2, annotate_fv e3 in
+        If (ae1, ae2, ae3,
+          (annot,
+            VarSet.union (snd (term_getannot ae3)) (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2)))))
+    | Let(x, e1, e2, annot) ->
+      let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
+        Let (x, ae1, ae2,
+          (annot,
+            VarSet.remove x (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2)))))
+    | LetRec ({ name = (fn, ft); args = yts; body = e1 }, e2, annot) ->
+      let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
+        let lrfv = List.fold_left (fun a x -> VarSet.remove x a) (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) (fn::(List.map fst yts)) in
+          LetRec ({ name = (fn, ft); args = yts; body = ae1 }, ae2, (annot, lrfv))
+    | App (e1, es, annot) ->
+      let ae1, aes = annotate_fv e1, List.map annotate_fv es in
+        App (ae1, aes, (annot, (List.fold_left (fun afv ae -> VarSet.union afv (snd (term_getannot ae))) VarSet.empty aes)))
+    | Tuple(es, annot) ->
+      let aes = List.map annotate_fv es in
+        Tuple(aes, (annot, (List.fold_left (fun afv ae -> VarSet.union afv (snd (term_getannot ae))) VarSet.empty aes)))
+    | LetTuple(xs, e1, e2, annot) ->
+      let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
+        let lrfv = List.fold_left (fun a x -> VarSet.remove x a) (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) xs in
+          LetTuple(xs, ae1, ae2, (annot, lrfv))
+    | Array(e1, e2, annot) ->
+      let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
+        Array(ae1, ae2, (annot, (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2)))))
+    | Get (e1, e2, annot) ->
+      let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
+        Get (ae1, ae2, (annot, (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2)))))
+    | Put (e1, e2, e3, annot) ->
+      let ae1, ae2, ae3 = annotate_fv e1, annotate_fv e2, annotate_fv e3 in
+        Put (ae1, ae2, ae3, (annot, (VarSet.union (snd (term_getannot ae3)) (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))))))
+
 let analyze_expr (file : string) (filem : string) =
-    Printf.printf "Analyzing: Orig: %s ... Mod: %s ...\n" file filem;
+    Printf.printf "Analyzing: Orig: %s ... Mod: %s ...\n" file filem; flush stdout;
     let channel, channelm = open_in file, open_in filem in
+    Printf.printf "Lexing "; flush stdout;
     let lexbuf, lexbufm = Lexing.from_channel channel, Lexing.from_channel channelm in
-    let e, em = Parser.exp Lexer.token lexbuf, Parser.exp Lexer.token lexbufm in
-    let e_hf, em_hf = (Id.counter := 0; OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) e), (Id.counter := 0; OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) em) in (* Id.counter := 0 to to avoid that the same subtree gets different hashes *)
+    Printf.printf "... done\n"; flush stdout;
+    Printf.printf "Parsing "; flush stdout;
+    let e, em = (Parser.exp Lexer.token lexbuf), (Parser.exp Lexer.token lexbufm) in
+    Printf.printf "... done\n"; flush stdout;
+    Printf.printf "Annotating original "; flush stdout;
+    (* let e_hf = (Id.counter := 0; OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) e) in *)
+    let e_hf = (annotate_fv (OriginalFunAlgorithm.term_map (fun e -> compute_hash e) e)) in
+    Printf.printf "... %d - done\n" (compute_hash e); flush stdout;
+    Printf.printf "Annotating modified "; flush stdout;
+    let em_hf = (annotate_fv (OriginalFunAlgorithm.term_map (fun e -> compute_hash e) em)) in
+    Printf.printf "... %d - done\n" (compute_hash em); flush stdout;
+    Printf.printf "Initial typing environments "; flush stdout;
     let gamma_init, gamma_initm = (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())), (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())) in
+    Printf.printf "... done\n"; flush stdout;
     (* Printf.printf "Program: %s\n" (FunSpecification.FunSpecification.string_of_term (fun f x -> ()) e);
     Printf.printf "Program Mod: %s\n" (FunSpecification.FunSpecification.string_of_term (fun f x -> ()) em); *)
+    Printf.printf "Building the cache "; flush stdout;
     let cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
     ignore (IncrementalFunAlgorithm.build_cache e_hf gamma_init cache);
+    Printf.printf "... done\n"; flush stdout;
     IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
     IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount em_hf) IncrementalFunAlgorithm.report;
-    let te, tem = OriginalFunAlgorithm.typing gamma_init e_hf, IncrementalFunAlgorithm.typing cache gamma_initm em_hf in
-        Printf.printf "Type: %s - IType: %s\n" (FunSpecification.FunSpecification.string_of_type te) (FunSpecification.FunSpecification.string_of_type tem);
-        Printf.printf "%s\n" (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report)
+    Printf.printf "Original typing "; flush stdout;
+    let te = OriginalFunAlgorithm.typing gamma_init e_hf in
+    Printf.printf "... done\n"; flush stdout;
+    Printf.printf "Incremental typing "; flush stdout;
+    let tem = IncrementalFunAlgorithm.typing cache gamma_initm em_hf in
+      Printf.printf "... done\n"; flush stdout;
+      Printf.printf "Type: %s - IType: %s\n" (FunSpecification.FunSpecification.string_of_type te) (FunSpecification.FunSpecification.string_of_type tem);
+      Printf.printf "%s\n\n\n" (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report)
 
 
 let _ =

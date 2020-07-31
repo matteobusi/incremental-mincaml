@@ -10,6 +10,7 @@ open Batteries
 
 open FunSpecification
 open Parser
+
 }
 
 (* Shorthands for frenquently used regexes *)
@@ -103,6 +104,8 @@ rule token = parse
     { TYPE_FLOAT }
 | "unit"
     { TYPE_UNIT }
+| "array"
+    { TYPE_ARRAY }
 | "["
     { LBRACKET }
 | "]"

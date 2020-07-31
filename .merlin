@@ -1,4 +1,4 @@
-S incrementalizer/src
+S incrementalizer/src/*
 S incrementalizer/src/fun/*
 S incrementalizer/src/fun
 S incrementalizer/src/lib

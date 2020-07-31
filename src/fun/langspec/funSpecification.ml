@@ -195,7 +195,8 @@ module FunSpecification (* : LanguageSpecification *) = struct
         in free_variables_cps e (fun d -> d)
 
 
-    let rec compute_hash e = Hashtbl.hash_param max_int max_int e
+    let rec compute_hash e = Hashtbl.hash e
+    (* let rec compute_hash e = Hashtbl.hash_param max_int max_int e *)
 
     let get_sorted_children e =
         match e with

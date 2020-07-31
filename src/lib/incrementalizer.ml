@@ -40,7 +40,7 @@ struct
                 Printf.printf "\nFailed typing at: %s\n" (L.string_of_term (fun _ _ -> ()) t);
                 List.iter (fun t -> Printf.printf "child %d: %s\n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t))) ts;
                 Printf.printf "context: %s \n\n" (L.string_of_context gamma);
-                failwith "Buildcache: CheckJoin failed!"
+                failwith "(incrementalizer.ml, l.43) buildcache: CheckJoin failed!"
             | Some r -> L.term_edit t ats (r, L.term_getannot t)) in
         let rec _build_cache (t : (L.res * (int * VarSet.t)) L.term) (t_hf : (int * VarSet.t) L.term) gamma cache =
             let (res, (hash, fvs)) = L.term_getannot t in
