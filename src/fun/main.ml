@@ -142,10 +142,10 @@ module Dot = Graph.Graphviz.Dot(struct
     let vertex_attributes v =
       (* if List.mem (fst v) (IncrementalFunAlgorithm.IncrementalReport.get_miss_list IncrementalFunAlgorithm.report) then *)
       (match !(snd (snd v)) with
-        | IncrementalFunAlgorithm.IncrementalReport.NoVisit -> [`Shape `Box; `Fillcolor 16777215]
-        | IncrementalFunAlgorithm.IncrementalReport.Orig -> [`Shape `Box; `Fillcolor 65535]
-        | IncrementalFunAlgorithm.IncrementalReport.Hit -> [`Shape `Box; `Fillcolor 65280]
-        | IncrementalFunAlgorithm.IncrementalReport.Miss -> [`Shape `Box; `Fillcolor 16711680])
+        | IncrementalFunAlgorithm.IncrementalReport.NoVisit -> [`Shape `Box; `Fillcolor 16777215; `Style `Filled]
+        | IncrementalFunAlgorithm.IncrementalReport.Orig -> [`Shape `Box; `Fillcolor 65535; `Style `Filled]
+        | IncrementalFunAlgorithm.IncrementalReport.Hit -> [`Shape `Box; `Fillcolor 65280; `Style `Filled]
+        | IncrementalFunAlgorithm.IncrementalReport.Miss -> [`Shape `Box; `Fillcolor 16711680; `Style `Filled])
     let vertex_name v = fst (snd v)
     let default_vertex_attributes _ = []
     let graph_attributes _ = []
