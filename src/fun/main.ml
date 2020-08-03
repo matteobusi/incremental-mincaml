@@ -123,7 +123,7 @@ let lbl_of_term e =
   | LetRec(f, e, annot) -> Format.sprintf "LetRec %s" (fst f.name)
   | App(e, es, annot) -> "App"
   | Tuple(es, annot) -> "Tuple"
-  | LetTuple(bs, e1, e2, annot) -> Format.sprintf "LetRec %s" (List.fold_left (fun a s -> a ^ " " ^ s) "" bs)
+  | LetTuple(bs, e1, e2, annot) -> Format.sprintf "LetTuple%s" (List.fold_left (fun a s -> a ^ " " ^ s) "" bs)
 
 module Node = struct
    type t = int * (string * (IncrementalFunAlgorithm.IncrementalReport.node_visit_type ref))
