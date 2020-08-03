@@ -1,7 +1,9 @@
-S incrementalizer/src/*
-S incrementalizer/src/fun/*
-S incrementalizer/src/fun
-S incrementalizer/src/lib
+S src/*
+S src/fun
+S src/fun/examples
+S src/fun/langspec
+S src/fun/tests
+S src/lib
 
 PKG ounit2
 PKG benchmark
@@ -9,8 +11,11 @@ PKG batteries
 PKG landmarks
 PKG core_bench
 PKG core
+PKG ocamlgraph
 
-B incrementalizer/_build
-B incrementalizer/_build/src/fun
-B incrementalizer/_build/src/fun/*
-B incrementalizer/_build/src/lib
+B _build
+B _build/src/fun
+B _build/src/fun/examples
+B _build/src/fun/langspec
+B _build/src/fun/tests
+B _build/src/lib

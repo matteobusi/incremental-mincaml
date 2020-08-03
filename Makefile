@@ -7,19 +7,19 @@ $(TARGET): default
 default: $(TARGET).native
 
 %.native:
-	ocamlbuild -use-ocamlfind -pkg batteries $@
+	ocamlbuild -use-ocamlfind -pkg batteries,ocamlgraph $@
 
 %.byte:
-	ocamlbuild -use-ocamlfind -pkg batteries $@
+	ocamlbuild -use-ocamlfind -pkg batteries,ocamlgraph $@
 
 test: default
-	ocamlbuild -use-ocamlfind -pkg batteries,ounit2 $@.native
+	ocamlbuild -use-ocamlfind -pkg batteries,ounit2,ocamlgraph $@.native
 
 texperiments:
-	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,core,core_bench texperiments.native
+	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,core,ocamlgraph,core_bench texperiments.native
 
 mexperiments:
-	ocamlbuild -use-ocamlfind -pkg batteries,landmarks mexperiments.native
+	ocamlbuild -use-ocamlfind -pkg batteries,landmarks,ocamlgraph mexperiments.native
 
 all: default test mexperiments texperiments
 
