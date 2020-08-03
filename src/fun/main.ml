@@ -1,4 +1,5 @@
 open Batteries
+open Graph
 
 module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
 module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
@@ -39,14 +40,14 @@ let rec nodecount e = match e with
   | FBop(_, e1, e2, annot)
   | Rel(_, e1, e2, annot) -> 1 + nodecount e1 + nodecount e2
   | If(e1, e2, e3, annot) -> 1 + nodecount e1 + nodecount e2 + nodecount e3
-  | Let(_, e1, e2, annot) -> 2 + nodecount e1 + nodecount e2 (* curr node + x *)
-  | LetRec ({ name = _; args = yts; body = e1 }, e2, annot) -> 2 + (List.length yts) + nodecount e1 + nodecount e2
+  | Let(_, e1, e2, annot) -> 1 + nodecount e1 + nodecount e2 (* curr node + x *)
+  | LetRec ({ name = _; args = yts; body = e1 }, e2, annot) -> 1 + nodecount e1 + nodecount e2
   | App (e1, es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount (e1::es)))
   | Tuple(es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount es))
-  | LetTuple(xs, e1, e2, annot) -> 1 + List.length xs + nodecount e1 + nodecount e2
+  | LetTuple(xs, e1, e2, annot) -> 1 + nodecount e1 + nodecount e2
   | Array(e1, e2, annot)
-  | Get (e1, e2, annot) -> nodecount e1 + nodecount e2
-  | Put (e1, e2, e3, annot) -> nodecount e1 + nodecount e2 + nodecount e3
+  | Get (e1, e2, annot) -> 1 + nodecount e1 + nodecount e2
+  | Put (e1, e2, e3, annot) -> 1 + nodecount e1 + nodecount e2 + nodecount e3
 
 let rec annotate_fv e =
   match e with
@@ -101,6 +102,76 @@ let rec annotate_fv e =
       let ae1, ae2, ae3 = annotate_fv e1, annotate_fv e2, annotate_fv e3 in
         Put (ae1, ae2, ae3, (annot, (VarSet.union (snd (term_getannot ae3)) (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))))))
 
+let lbl_of_term e =
+  match e with
+  | Unit(annot) -> "()"
+  | Bool(b, annot) -> Format.sprintf "%b" b
+  | Int(n, annot) -> Format.sprintf "%d" n
+  | Float(f, annot) -> Format.sprintf "%f" f
+  | Not(e, annot) -> "Not"
+  | Neg(e, annot) -> "-"
+  | IBop(op, e1, e2, annot) -> op (* Format.sprintf "%s" op *)
+  | FNeg(e, annot) -> "-."
+  | FBop(op, e1, e2, annot) -> op (* Format.sprintf "%s" op *)
+  | Rel(op, e1, e2, annot) -> op (* Format.sprintf "%s" op *)
+  | If(e1, e2,e3, annot) -> "IfThenElse"
+  | Let(id, e1, e2, annot) -> Format.sprintf "Let %s" id
+  | Var(id, annot) -> Format.sprintf "%s" id
+  | Array(e1, e2, annot) -> "ArrayMake"
+  | Get(e1,e2, annot) -> "ArrayGet"
+  | Put(e1, e2, e3, annot) -> "ArrayPut"
+  | LetRec(f, e, annot) -> Format.sprintf "LetRec %s" (fst f.name)
+  | App(e, es, annot) -> "App"
+  | Tuple(es, annot) -> "Tuple"
+  | LetTuple(bs, e1, e2, annot) -> Format.sprintf "LetRec %s" (List.fold_left (fun a s -> a ^ " " ^ s) "" bs)
+
+module Node = struct
+   type t = int * (string * (IncrementalFunAlgorithm.IncrementalReport.node_visit_type ref))
+   let compare = Stdlib.compare
+   let hash = Hashtbl.hash
+   let equal = (=)
+end
+
+module G = Graph.Persistent.Digraph.Concrete (Node)
+
+module Dot = Graph.Graphviz.Dot(struct
+    include G
+    let edge_attributes (a, b) = []
+    let default_edge_attributes _ = []
+    let get_subgraph _ = None
+    let vertex_attributes v =
+      (* if List.mem (fst v) (IncrementalFunAlgorithm.IncrementalReport.get_miss_list IncrementalFunAlgorithm.report) then *)
+      (match !(snd (snd v)) with
+        | IncrementalFunAlgorithm.IncrementalReport.NoVisit -> [`Shape `Box; `Fillcolor 16777215]
+        | IncrementalFunAlgorithm.IncrementalReport.Orig -> [`Shape `Box; `Fillcolor 65535]
+        | IncrementalFunAlgorithm.IncrementalReport.Hit -> [`Shape `Box; `Fillcolor 65280]
+        | IncrementalFunAlgorithm.IncrementalReport.Miss -> [`Shape `Box; `Fillcolor 16711680])
+    let vertex_name v = fst (snd v)
+    let default_vertex_attributes _ = []
+    let graph_attributes _ = []
+  end)
+
+let cnt = ref 0
+
+let string_of_node_visit_type t = match t with
+  | IncrementalFunAlgorithm.IncrementalReport.NoVisit -> "NoVisit"
+  | IncrementalFunAlgorithm.IncrementalReport.Orig -> "Orig"
+  | IncrementalFunAlgorithm.IncrementalReport.Hit -> "Hit"
+  | IncrementalFunAlgorithm.IncrementalReport.Miss -> "Miss"
+
+let rec mk_graph i e ig =
+  let use_cnt () = incr cnt; !cnt in
+  let cl = FunSpecification.FunSpecification.get_sorted_children e in
+  let ve = (i, (Printf.sprintf "\"(%d) %s\"" (!cnt) (lbl_of_term e), term_getannot e)) in
+  let g = G.add_vertex ig ve in
+  let g' = List.fold_left
+    (fun a ec -> (
+      let vec =
+      (fst ec, (Printf.sprintf "\"(%d) %s\"" (use_cnt ()) (lbl_of_term (snd ec)), term_getannot (snd ec))) in
+        G.add_edge (mk_graph (fst ec) (snd ec) a) ve vec
+    )) g (List.rev cl)
+    in g'
+
 let analyze_expr (file : string) (filem : string) =
     Printf.printf "Analyzing: Orig: %s ... Mod: %s ...\n" file filem; flush stdout;
     let channel, channelm = open_in file, open_in filem in
@@ -113,10 +184,10 @@ let analyze_expr (file : string) (filem : string) =
     Printf.printf "Annotating original "; flush stdout;
     (* let e_hf = (Id.counter := 0; OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) e) in *)
     let e_hf = (annotate_fv (OriginalFunAlgorithm.term_map (fun e -> compute_hash e) e)) in
-    Printf.printf "... %d - done\n" (compute_hash e); flush stdout;
+    Printf.printf "... - done (root hash: %d)\n" (compute_hash e); flush stdout;
     Printf.printf "Annotating modified "; flush stdout;
     let em_hf = (annotate_fv (OriginalFunAlgorithm.term_map (fun e -> compute_hash e) em)) in
-    Printf.printf "... %d - done\n" (compute_hash em); flush stdout;
+    Printf.printf "... - done (root hash: %d)\n" (compute_hash em); flush stdout;
     Printf.printf "Initial typing environments "; flush stdout;
     let gamma_init, gamma_initm = (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())), (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())) in
     Printf.printf "... done\n"; flush stdout;
@@ -135,8 +206,14 @@ let analyze_expr (file : string) (filem : string) =
     let tem = IncrementalFunAlgorithm.typing cache gamma_initm em_hf in
       Printf.printf "... done\n"; flush stdout;
       Printf.printf "Type: %s - IType: %s\n" (FunSpecification.FunSpecification.string_of_type te) (FunSpecification.FunSpecification.string_of_type tem);
-      Printf.printf "%s\n\n\n" (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report)
-
+      Printf.printf "%s\n" (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report);
+      (match IncrementalFunAlgorithm.report.annot_t with
+        | Some at ->
+          let file = Stdlib.open_out_bin "incremental_visual.dot" in
+            Printf.printf "Printing tree report ...";
+            Dot.output_graph file (mk_graph 0 at G.empty);
+            Printf.printf "done\n"
+        | _ -> ())
 
 let _ =
     if Array.length Sys.argv = 3 then
