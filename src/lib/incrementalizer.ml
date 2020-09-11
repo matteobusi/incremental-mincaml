@@ -4,7 +4,8 @@ open LanguageSpecification
 open Original
 
 (* This is just a POC to show that the process is indeed mechanizable *)
-module TypeAlgorithm (L : LanguageSpecification) =
+module TypeAlgorithm
+    (L : LanguageSpecification) =
 struct
     module OriginalFunAlgorithm = Original.TypeAlgorithm(L)
     module Cache = Hashtbl.Make(struct

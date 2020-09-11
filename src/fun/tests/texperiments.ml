@@ -21,31 +21,8 @@ let setupinc_n = "setup+inc" (* Incremental typing algorithm w. its setup *)
 let setup_n = "setup" (* Just the setup of the above *)
 let inc_n = "inc" (* Just the incremental typing algorithm *)
 
-
-let rec nodecount e = match e with
-  | Unit(annot)
-  | Bool(_, annot)
-  | Int(_, annot)
-  | Float(_, annot)
-  | Var(_, annot) -> 1
-  | Not(e1, annot)
-  | Neg(e1, annot)
-  | FNeg(e1, annot) -> 1 + nodecount e1
-  | IBop(_, e1, e2, annot)
-  | FBop(_, e1, e2, annot)
-  | Rel(_, e1, e2, annot) -> 1 + nodecount e1 + nodecount e2
-  | If(e1, e2, e3, annot) -> 1 + nodecount e1 + nodecount e2 + nodecount e3
-  | Let(_, e1, e2, annot) -> 2 + nodecount e1 + nodecount e2 (* curr node + x *)
-  | LetRec ({ name = _; args = yts; body = e1 }, e2, annot) -> 2 + (List.length yts) + nodecount e1 + nodecount e2
-  | App (e1, es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount (e1::es)))
-  | Tuple(es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount es))
-  | LetTuple(xs, e1, e2, annot) -> 1 + List.length xs + nodecount e1 + nodecount e2
-  | Array(e1, e2, annot)
-  | Get (e1, e2, annot) -> nodecount e1 + nodecount e2
-  | Put (e1, e2, e3, annot) -> nodecount e1 + nodecount e2 + nodecount e3
-
 let throughput_original_vs_inc quota verbosity e gamma_init inv_depth_list =
-  let nc = nodecount e in
+  let nc = Generator.nodecount e in
   let measures = Bench.measure
     ~run_config:(Core_bench.Std.Bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
     [
@@ -85,15 +62,6 @@ let throughput_original_vs_inc quota verbosity e gamma_init inv_depth_list =
       | Ok r -> Some r) results in
   (* Ugly hack, should use extract but it is not exposed by the interface! *)
   Core_bench.Simplified_benchmark.Results.t_of_sexp (Core_bench.Simplified_benchmark.to_sexp results)
-
-let gen_list min max next =
-  let rec gen_aux curr =
-    if curr >= max then [max] else curr :: (gen_aux (next curr))
-  in gen_aux min
-
-let rec cartesian a b = match b with
-| [] -> []
-| be :: bs -> (List.map (fun ae -> (be, ae)) a) @ (cartesian a bs)
 
 module MinimalResult = struct
     type t =
@@ -154,12 +122,12 @@ let _ =
   else
     let quota, min_depth, max_depth =
       Core_bench.Bench.Quota.of_string Sys.argv.(1), int_of_string Sys.argv.(2), int_of_string Sys.argv.(3) in
-    let depth_list = gen_list min_depth max_depth (fun n -> n+2) in  (* Seems that big AST have ~20k nodes, cfr. [Erdweg et al.] *)
+    let depth_list = Generator.gen_list min_depth max_depth (fun n -> n+2) in  (* Seems that big AST have ~20k nodes, cfr. [Erdweg et al.] *)
     let len = List.length depth_list in
     Printf.printf "name, depth, fvc, inv_depth, rate\n"; flush stdout;
     List.iteri (fun i depth -> (
-      let fv_c_list = 1 :: gen_list (BatInt.pow 2 7) (BatInt.pow 2 (depth-1)) (fun n -> n*2) in
-      let inv_depth_list = [1; 2; 3] @ gen_list 4 (depth - 1) (fun n -> n + 2) in
+      let fv_c_list = 1 :: Generator.gen_list (BatInt.pow 2 7) (BatInt.pow 2 (depth-1)) (fun n -> n*2) in
+      let inv_depth_list = [1; 2; 3] @ Generator.gen_list 4 (depth - 1) (fun n -> n + 2) in
       Printf.eprintf "[%d/%d] depth=%d ...\n" (i+1) len depth;
       flush stderr;
         List.iteri (fun j fv_c -> (
@@ -189,7 +157,7 @@ let _ =
         Printf.printf "] - %d buckets\n" freq;
       ) hist.bucket_histogram
 
-  let nc = nodecount e in
+  let nc = Generator.nodecount e in
   let cache = IncrementalFunAlgorithm.get_empty_cache nc in
     ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
     print_histogram cache;

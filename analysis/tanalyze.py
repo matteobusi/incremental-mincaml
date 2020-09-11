@@ -105,4 +105,4 @@ if __name__ == "__main__":
         tabulate(res, [(14,1), (14, 2**7), (14, 2**9), (14, 2**11), (14, 2**13)])
         tabulate(res, [(12,1), (12, 2**7), (12, 2**9), (12, 2**11)])
 
-        plot_on_pdf("{}/".format(sys.argv[2]) + "res_{}_{}.pdf", res)
+        plot_on_pdf("{}/".format(sys.argv[2]) + "tres_{}_{}.pdf", res)

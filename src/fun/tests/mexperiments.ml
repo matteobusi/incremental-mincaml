@@ -30,19 +30,10 @@ let mem_inc e li =
 let just_cache e l =
     let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
     let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
-    enter l;
+      enter l;
       let full_cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
-      ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
-    exit l
-
-let gen_list min max next =
-  let rec gen_aux curr =
-    if curr >= max then [max] else curr :: (gen_aux (next curr))
-  in gen_aux min
-
-let rec cartesian a b = match b with
-| [] -> []
-| be :: bs ->  (List.map (fun ae -> (be, ae)) a) @ (cartesian a bs)
+        ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
+        exit l
 
 (*
 let repeat f k =
@@ -71,10 +62,10 @@ let _ =
     } in
     set_profiling_options options;
     let min_depth, max_depth, cache = int_of_string Sys.argv.(1), int_of_string Sys.argv.(2), bool_of_string Sys.argv.(3) in
-    let depth_list = gen_list min_depth max_depth (fun n -> n+2) in
-    let fv_c_list = 1 :: (gen_list (BatInt.pow 2 (min_depth-1)) (BatInt.pow 2 (max_depth-1)) (fun n -> 2*n)) in
+    let depth_list = Generator.gen_list min_depth max_depth (fun n -> n+2) in
+    let fv_c_list = 1 :: (Generator.gen_list (BatInt.pow 2 (min_depth-1)) (BatInt.pow 2 (max_depth-1)) (fun n -> 2*n)) in
     let tpl_cmp (a_id, a_fvc) (b_id, b_fvc) = if (a_id = b_id && a_fvc=b_fvc) then 0 else -1 in
-    let param_list = List.sort_uniq tpl_cmp (cartesian depth_list fv_c_list) in
+    let param_list = List.sort_uniq tpl_cmp (Generator.cartesian depth_list fv_c_list) in
     let param_list = List.filter (fun (fv_c, depth) -> fv_c <= (BatInt.pow 2 (depth-1))) param_list in
     let len = List.length param_list in
       List.iteri (fun i (fv_c, depth) -> (
