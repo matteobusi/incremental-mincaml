@@ -17,40 +17,41 @@ open VarSet
 let orig_n = "orig" (* Original typing algorithm *)
 let einc_n = "einc" (* Incremental typing algorithm w. empty initial cache *)
 let finc_n = "finc" (* Incremental typing algorithm w. full initial cache *)
-let setupinc_n = "setup+inc" (* Incremental typing algorithm w. its setup *)
-let setup_n = "setup" (* Just the setup of the above *)
+(* let setupinc_n = "setup+inc" (* Incremental typing algorithm w. its setup *)
+let setup_n = "setup" Just the setup of the above *)
 let inc_n = "inc" (* Just the incremental typing algorithm *)
 
-let throughput_original_vs_inc quota verbosity e gamma_init (xi_invalidated : int) =
+let theo_diff num_fact xi_invalidated =
+  (if xi_invalidated = 1 then (2 + 4*(num_fact - 2)) else ((xi_invalidated - 1) + 4*(num_fact - xi_invalidated))) + 5
+
+let throughput_original_vs_inc quota verbosity num_fact e gamma_init (xi_invalidated : int) =
   let nc = Generator.nodecount e in
+  let cache = IncrementalFunAlgorithm.get_empty_cache nc in
+    ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
+    ignore (Generator.simulate_fullchange cache e xi_invalidated);
+    let new_sz = IncrementalFunAlgorithm.Cache.length cache in
+  (* FIXME: In Core_bench the maximum number of samples seems to be equal to max_samples=3000, cfr. l.29 of Benchmark.ml *)
+  let max_samples = 10000 in
+  let copies = Array.init max_samples (fun _ -> IncrementalFunAlgorithm.Cache.copy cache) in
+  let c_counter = ref 0 in
   let measures = Bench.measure
     ~run_config:(Core_bench.Std.Bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
     [
       Bench.Test.create ~name:(orig_n ^ ":" ^ (string_of_int xi_invalidated))
         (fun () -> OriginalFunAlgorithm.typing gamma_init e);
-      Bench.Test.create ~name:finc_n
+      (* Bench.Test.create ~name:finc_n
         (let cache = IncrementalFunAlgorithm.get_empty_cache nc in
             ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
             fun () -> IncrementalFunAlgorithm.typing cache gamma_init e
         );
       Bench.Test.create ~name:einc_n
-        (fun () -> IncrementalFunAlgorithm.typing (IncrementalFunAlgorithm.get_empty_cache nc) gamma_init e);
-      Bench.Test.create ~name:(setupinc_n ^ ":" ^ (string_of_int xi_invalidated))
+        (fun () -> IncrementalFunAlgorithm.typing (IncrementalFunAlgorithm.get_empty_cache nc) gamma_init e); *)
+      Bench.Test.create ~name:(inc_n ^ ":" ^ (string_of_int xi_invalidated))
       (
         fun () ->
-          let cache = IncrementalFunAlgorithm.get_empty_cache nc in
-            ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
-            (* Enough because the tree isn't actually modified, i.e., after inc. typing the cache will be the same as the initial one! *)
-            ignore (Generator.simulate_fullchange cache e xi_invalidated);
-            IncrementalFunAlgorithm.typing cache gamma_init e
-      );
-      Bench.Test.create ~name:(setup_n ^ ":" ^ (string_of_int xi_invalidated))
-      (
-        fun () ->
-          let cache = IncrementalFunAlgorithm.get_empty_cache nc in
-            ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
-            ignore (Generator.simulate_fullchange cache e xi_invalidated);
-            cache
+          incr c_counter;
+          (* assert (IncrementalFunAlgorithm.Cache.length copies.(!c_counter - 1) = new_sz); *)
+          IncrementalFunAlgorithm.typing copies.(!c_counter - 1) gamma_init e
       );
     ] in
   let results = List.map Bench.analyze measures in
@@ -81,38 +82,15 @@ let split_name name =
 let extract_minimal (results : Core_bench.Simplified_benchmark.Results.t) num_fact xi_invalidated =
   (* First look for incr_setup_name and setup_name and merge them *)
   let rate_of_time t = 1000000000./.t in
-  (* FIXME: THIS IS NOT A RATE! *)
-  (* let rate_of_time t = (Core.Time.Span.to_sec (Core.Time.Span.of_ns t)) in *)
-  (* let rate_of_time t = t in *)
   let project r =
     MinimalResult.({
       name = r.full_benchmark_name;
       num_fact = num_fact;
       xi_invalidated = xi_invalidated;
-      diffsz = (if xi_invalidated = 1 then (2 + 4*(num_fact - 2)) else ((xi_invalidated - 1) + 4*(num_fact - xi_invalidated))) + 5;
+      diffsz = theo_diff num_fact xi_invalidated;
       rate = rate_of_time r.time_per_run_nanos
     }) in
-  let to_fix_list = List.filter
-    (fun r -> String.starts_with r.full_benchmark_name setupinc_n) results in
-  let incr_results = List.map
-    (
-      fun sir ->
-        let name, xi_invalidated = split_name sir.full_benchmark_name in
-        let setup_res = List.find (fun sr -> String.equal sr.full_benchmark_name (setup_n^":"^(String.of_int xi_invalidated))) results in
-          let r = rate_of_time (sir.time_per_run_nanos -. setup_res.time_per_run_nanos) in
-          (if r < 0.0 then Printf.eprintf "(dexperiments.ml:98) Warning: Corrected rate for %s is %f < 0.\n" (inc_n^":"^(String.of_int xi_invalidated)) r else ());
-          MinimalResult.({
-            name = inc_n^":"^(String.of_int xi_invalidated);
-            num_fact = num_fact;
-            xi_invalidated = xi_invalidated;
-            diffsz = (if xi_invalidated = 1 then (2 + 4*(num_fact - 2)) else ((xi_invalidated - 1) + 4*(num_fact - xi_invalidated))) + 5;
-            (*
-              FIXME: Should use Batteries.Float.max but inexplicably using the Batteries floating points produces a spurious print of '-44604263' on the stdout.
-            *)
-            rate = max 0.0 r
-          })
-    ) to_fix_list in
-  (List.map project results) @ incr_results
+  (List.map project results)
 
 let print_csv (mr_list : MinimalResult.t list) =
   List.iter
@@ -239,7 +217,7 @@ let _ =
           Printf.eprintf "\t[%d/%d] x_%d ..." (j+1) (List.length interval_list) s;
           flush stderr;
           let gamma_init = FunContext.get_empty_context () in
-          let simplified_results = throughput_original_vs_inc quota Core_bench.Verbosity.Quiet e gamma_init s in
+          let simplified_results = throughput_original_vs_inc quota Core_bench.Verbosity.Quiet n e gamma_init s in
             print_csv (extract_minimal simplified_results n s);
             Printf.eprintf "done!\n";
             flush stderr;

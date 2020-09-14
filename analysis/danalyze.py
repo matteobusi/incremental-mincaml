@@ -39,10 +39,10 @@ def plot_on_pdf (filename, res):
         res_2 = res[res["num_fact"] == num_fact]
         with PdfPages(filename.format(num_fact)) as pdf:
             fig, ax = plt.subplots()
-            add_res_orig = res_2[res_2["name"].str.startswith(orig_n)].drop(["name", "num_fact", "xi_invalidated"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            #add_res_orig = res_2[res_2["name"].str.startswith(orig_n)].drop(["name", "num_fact", "xi_invalidated"], axis=1).groupby(["diffsz"]).mean().reset_index()
             add_res_inc  = res_2[res_2["name"].str.startswith(inc_n)].drop(["name", "num_fact", "xi_invalidated"], axis=1).groupby(["diffsz"]).mean().reset_index()
             # add_res_setupinc = res_2[res_2["name"].str.startswith(setupinc_n)].drop(["name", "num_fact", "xi_invalidated"], axis=1).groupby(["diffsz"]).mean().reset_index()
-            add_res_setup = res_2[res_2["name"].str.startswith(setup_n)].drop(["name", "num_fact", "xi_invalidated"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            #add_res_setup = res_2[res_2["name"].str.startswith(setup_n)].drop(["name", "num_fact", "xi_invalidated"], axis=1).groupby(["diffsz"]).mean().reset_index()
 
             # add_res_inc_comp = add_res_inc.drop(["rate"], axis=1)
             # add_res_inc_comp["rate"] = 1.0/(1.0/add_res_setupinc["rate"] - 1.0/add_res_setup["rate"])
@@ -50,27 +50,29 @@ def plot_on_pdf (filename, res):
             # add_res_orig["diffsz"] = num_fact - add_res_orig["xi_invalidated"]
             # add_res_inc["diffsz"] = num_fact - add_res_inc["xi_invalidated"]
 
-            add_res_orig.plot(x="diffsz", y="rate", ax=ax, label=orig_n, marker='*', color='blue', linewidth=2, linestyle='dashed') # BLUE
+            #add_res_orig.plot(x="diffsz", y="rate", ax=ax, label=orig_n, marker='*', color='blue', linewidth=2, linestyle='dashed') # BLUE
             add_res_inc.plot(x="diffsz", y="rate", ax=ax, label=inc_n, marker='d', color='orange', linewidth=2) # ORANGE
             # add_res_setupinc.plot(x="diffsz", y="rate", ax=ax, label=setupinc_n, marker='*', color='red', linewidth=2) # RED
-            add_res_setup.plot(x="diffsz", y="rate", ax=ax, label=setup_n, marker='o', color='green', linewidth=2) # GREEN
+            #add_res_setup.plot(x="diffsz", y="rate", ax=ax, label=setup_n, marker='o', color='green', linewidth=2) # GREEN
             # add_res_inc_comp.plot(x="diffsz", y="rate", ax=ax, label="inc\_comp", marker='X', color='violet', linewidth=2) # YELLOW
 
             # plt.xticks(np.arange(min(add_res_orig["diffsz"]), max(add_res_orig["diffsz"]) + 1, 1.0))
             ymax = max (
-                [max(add_res_orig["rate"]),
+                [
+                #max(add_res_orig["rate"]),
                 max(add_res_inc["rate"]),
                 # max(add_res_setupinc["rate"]),
-                max(add_res_setup["rate"]),
+                #max(add_res_setup["rate"]),
                 # max(add_res_inc_comp["rate"])
                 ]
             )
 
             ymin = max ([ 0, min (
-                [min(add_res_orig["rate"]),
+                [
+                #min(add_res_orig["rate"]),
                 min(add_res_inc["rate"]),
                 # min(add_res_setupinc["rate"]),
-                min(add_res_setup["rate"]),
+                #min(add_res_setup["rate"]),
                 # min(add_res_inc_comp["rate"])
                 ]
             ) - 1])

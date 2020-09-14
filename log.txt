@@ -1,0 +1,23 @@
+[1/10] n=10 ...
+	[1/4] x_1 ...Fatal error: exception "Assert_failure src/fun/tests/dexperiments.ml:52:10"
+Raised at file "src/error.ml" (inlined), line 9, characters 14-30
+Called from file "src/error.ml", line 11, characters 19-40
+Called from file "src/span_float.ml" (inlined), line 380, characters 8-66
+Called from file "src/span_float.ml", line 487, characters 29-68
+Called from file "src/span_float.ml" (inlined), line 500, characters 8-65
+Called from file "src/span_float.ml", line 519, characters 26-60
+Called from file "src/quota.ml", line 21, characters 10-36
+Fatal error in uncaught exception handler: exception BatInnerIO.Output_closed
+Raised at file "src/batInnerIO.ml", line 154, characters 20-39
+Called from file "src/batInnerIO.ml", line 232, characters 12-32
+Called from file "src/batInnerIO.ml" (inlined), line 240, characters 2-42
+Called from file "src/batFormat.mlv" (inlined), line 28, characters 40-75
+Called from file "src/batFormat.mlv", line 70, characters 9-24
+Called from file "format.ml", line 347, characters 4-28
+Called from file "format.ml", line 477, characters 6-72
+Called from file "format.ml", line 484, characters 6-24
+Called from file "format.ml", line 687, characters 2-20
+Called from file "format.ml", line 743, characters 2-27
+Called from file "format.ml", line 1337, characters 20-38
+Called from file "src/exn.ml", line 96, characters 2-74
+Called from file "printexc.ml", line 296, characters 10-35

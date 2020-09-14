@@ -5,7 +5,6 @@ S src/fun/tests
 S src/lib
 
 PKG ounit2
-PKG benchmark
 PKG batteries
 PKG landmarks
 PKG core_bench
