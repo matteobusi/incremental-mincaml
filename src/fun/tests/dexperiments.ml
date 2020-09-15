@@ -24,14 +24,12 @@ let inc_n = "inc" (* Just the incremental typing algorithm *)
 let theo_diff num_fact xi_invalidated =
   (if xi_invalidated = 1 then (2 + 4*(num_fact - 2)) else ((xi_invalidated - 1) + 4*(num_fact - xi_invalidated))) + 5
 
-let throughput_original_vs_inc quota verbosity num_fact e gamma_init (xi_invalidated : int) =
+let throughput_original_vs_inc quota verbosity max_samples num_fact e gamma_init (xi_invalidated : int) =
   let nc = Generator.nodecount e in
   let cache = IncrementalFunAlgorithm.get_empty_cache nc in
     ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
     ignore (Generator.simulate_fullchange cache e xi_invalidated);
-    let new_sz = IncrementalFunAlgorithm.Cache.length cache in
   (* FIXME: In Core_bench the maximum number of samples seems to be equal to max_samples=3000, cfr. l.29 of Benchmark.ml *)
-  let max_samples = 10000 in
   let copies = Array.init max_samples (fun _ -> IncrementalFunAlgorithm.Cache.copy cache) in
   let c_counter = ref 0 in
   let measures = Bench.measure
@@ -50,7 +48,6 @@ let throughput_original_vs_inc quota verbosity num_fact e gamma_init (xi_invalid
       (
         fun () ->
           incr c_counter;
-          (* assert (IncrementalFunAlgorithm.Cache.length copies.(!c_counter - 1) = new_sz); *)
           IncrementalFunAlgorithm.typing copies.(!c_counter - 1) gamma_init e
       );
     ] in
@@ -197,27 +194,30 @@ let _ = QCheck_runner.run_tests_main [test] *)
 
 let _ =
    if Array.length Sys.argv < 6 then
-    Printf.eprintf "Usage: %s quota min max step n_intervals\n" Sys.argv.(0)
+    Printf.eprintf "Usage: %s quota max_samples min max n_intervals\n" Sys.argv.(0)
   else
-    let quota, min, max, step, n_intervals = Core_bench.Bench.Quota.of_string Sys.argv.(1),
+    let quota, max_samples, min, max, n_intervals = Core_bench.Bench.Quota.of_string Sys.argv.(1),
       int_of_string Sys.argv.(2),
       int_of_string Sys.argv.(3),
       int_of_string Sys.argv.(4),
       int_of_string Sys.argv.(5) in
-    let n_list = Generator.gen_list min max (fun c -> c + step) in
+    Printf.eprintf "Max samples: %d\n" max_samples;
+    flush stderr;
+    let n_list = Generator.gen_list min max (fun c -> 2*c) in
     let annotated_fact e = annotate_fv (OriginalFunAlgorithm.term_map (fun e -> compute_hash e) e) in
     let prog_list = List.map (fun n -> (n,  annotated_fact (Generator.fact_unroll n))) n_list in
     let len = List.length prog_list in
     Printf.printf "name, num_fact, xi_invalidated, diffsz, rate\n"; flush stdout;
     List.iteri (fun i (n, e) -> (
-      let interval_list = Generator.gen_list 1 n (fun s -> s + (n-1)/(n_intervals - 1)) in
+      let step = int_of_float (ceil (float_of_int (n-1)) /. (float_of_int (n_intervals - 1))) in
+      let interval_list = Generator.gen_list 1 n (fun s -> s + step) in
       Printf.eprintf "[%d/%d] n=%d ...\n" (i+1) len n;
       flush stderr;
         List.iteri (fun j s -> (
           Printf.eprintf "\t[%d/%d] x_%d ..." (j+1) (List.length interval_list) s;
           flush stderr;
           let gamma_init = FunContext.get_empty_context () in
-          let simplified_results = throughput_original_vs_inc quota Core_bench.Verbosity.Quiet n e gamma_init s in
+          let simplified_results = throughput_original_vs_inc quota Core_bench.Verbosity.Quiet max_samples n e gamma_init s in
             print_csv (extract_minimal simplified_results n s);
             Printf.eprintf "done!\n";
             flush stderr;
