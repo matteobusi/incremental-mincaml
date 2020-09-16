@@ -1,0 +1,12 @@
+#!/bin/sh
+
+TIMES=$1
+NMIN=$2
+NMAX=$3
+
+FN="tresults-$TIMES-$NMIN-$NMAX.csv"
+PD="tplots-$TIMES-$NMIN-$NMAX/"
+
+./texperiments.native $TIMES $NMIN $NMAX > $FN
+mkdir -p $PD
+python analysis/tanalyze.py $FN $PD

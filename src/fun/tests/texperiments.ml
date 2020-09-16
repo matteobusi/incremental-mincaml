@@ -17,51 +17,45 @@ open VarSet
 let orig_n = "orig" (* Original typing algorithm *)
 let einc_n = "einc" (* Incremental typing algorithm w. empty initial cache *)
 let finc_n = "finc" (* Incremental typing algorithm w. full initial cache *)
-let setupinc_n = "setup+inc" (* Incremental typing algorithm w. its setup *)
-let setup_n = "setup" (* Just the setup of the above *)
 let inc_n = "inc" (* Just the incremental typing algorithm *)
 
-let throughput_original_vs_inc quota verbosity e gamma_init inv_depth_list =
+let throughput_original_vs_inc times verbosity e gamma_init inv_depth =
   let nc = Generator.nodecount e in
-  let measures = Bench.measure
-    ~run_config:(Core_bench.Std.Bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
-    [
-      Bench.Test.create_indexed ~name:orig_n ~args:inv_depth_list
-        (fun d ->
-          Core.Staged.stage(fun () -> OriginalFunAlgorithm.typing gamma_init e));
-      Bench.Test.create ~name:finc_n
-        (let cache = IncrementalFunAlgorithm.get_empty_cache nc in
-            ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
-            fun () -> IncrementalFunAlgorithm.typing cache gamma_init e
-        );
-      Bench.Test.create ~name:einc_n
-        (fun () -> IncrementalFunAlgorithm.typing (IncrementalFunAlgorithm.get_empty_cache nc) gamma_init e);
-      Bench.Test.create_indexed ~name:setupinc_n ~args:inv_depth_list
-      (let cache = IncrementalFunAlgorithm.get_empty_cache nc in
+  let quota = Core_bench.Std.Bench.Quota.of_string (string_of_int times ^ "x") in
+    let copies = Array.init times (fun _ ->
+      let cache = IncrementalFunAlgorithm.Cache.copy (IncrementalFunAlgorithm.get_empty_cache nc) in
         ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
-        fun d ->
-          Core.Staged.stage (fun () ->
-            (* Enough because the tree isn't actually modified, i.e., after inc. typing the cache will be the same as the initial one! *)
-            simulate_modification cache e d;
-            IncrementalFunAlgorithm.typing cache gamma_init e
-          )
-      );
-      Bench.Test.create_indexed ~name:setup_n ~args:inv_depth_list
-      (let cache = IncrementalFunAlgorithm.get_empty_cache nc in
-        ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
-        fun d ->
-          Core.Staged.stage (fun () ->
-            simulate_modification cache e d; cache
-          )
-      );
-    ] in
-  let results = List.map Bench.analyze measures in
-  let results = List.filter_map
-    (fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
-      | Error err -> Printf.printf "Error %s\n%!" (Core.Error.to_string_hum err); None
-      | Ok r -> Some r) results in
-  (* Ugly hack, should use extract but it is not exposed by the interface! *)
-  Core_bench.Simplified_benchmark.Results.t_of_sexp (Core_bench.Simplified_benchmark.to_sexp results)
+        Generator.simulate_modification cache e inv_depth;
+        cache
+      ) in
+    let c_counter = ref 0 in
+    let measures = Bench.measure
+      ~run_config:(Core_bench.Std.Bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
+      [
+        Bench.Test.create ~name:(orig_n ^ ":" ^ string_of_int inv_depth)
+          (fun () ->
+            OriginalFunAlgorithm.typing gamma_init e
+          );
+        (* Bench.Test.create ~name:finc_n
+          (let cache = IncrementalFunAlgorithm.get_empty_cache nc in
+              ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
+              fun () -> IncrementalFunAlgorithm.typing cache gamma_init e
+          );
+        Bench.Test.create ~name:einc_n
+          (fun () -> IncrementalFunAlgorithm.typing (IncrementalFunAlgorithm.get_empty_cache nc) gamma_init e); *)
+        Bench.Test.create ~name:(inc_n ^ ":" ^ string_of_int inv_depth)
+          (fun () ->
+            incr c_counter;
+            IncrementalFunAlgorithm.typing copies.(!c_counter - 1) gamma_init e
+          );
+      ] in
+    let results = List.map Bench.analyze measures in
+    let results = List.filter_map
+      (fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
+        | Error err -> Printf.printf "Error %s\n%!" (Core.Error.to_string_hum err); None
+        | Ok r -> Some r) results in
+    (* Ugly hack, should use extract but it is not exposed by the interface! *)
+    Core_bench.Simplified_benchmark.Results.t_of_sexp (Core_bench.Simplified_benchmark.to_sexp results)
 
 module MinimalResult = struct
     type t =
@@ -91,26 +85,7 @@ let extract_minimal (results : Core_bench.Simplified_benchmark.Results.t) depth 
       inv_depth = snd (split_name r.full_benchmark_name);
       rate = rate_of_time r.time_per_run_nanos
     }) in
-  let to_fix_list = List.filter
-    (fun r -> String.starts_with r.full_benchmark_name setupinc_n)
-    results in
-  let incr_results = List.map
-    (
-      fun sir ->
-        let name, inv_depth = split_name sir.full_benchmark_name in
-        let setup_res = List.find (fun sr -> String.equal sr.full_benchmark_name (setup_n^":"^(String.of_int inv_depth))) results in
-          MinimalResult.({
-            name = inc_n^":"^(String.of_int inv_depth);
-            depth = depth;
-            fvc = fvc;
-            inv_depth = inv_depth;
-            (*
-              TODO: Should use Batteries.Float.max but inexplicably using the Batteries floating points produces a spurious print of '-44604263' on the stdout.
-            *)
-            rate = rate_of_time (sir.time_per_run_nanos -. setup_res.time_per_run_nanos)
-          })
-    ) to_fix_list in
-  (List.map project results) @ incr_results
+  List.map project results
 
 let print_csv (mr_list : MinimalResult.t list) =
   List.iter
@@ -118,10 +93,10 @@ let print_csv (mr_list : MinimalResult.t list) =
 
 let _ =
    if Array.length Sys.argv < 4 then
-    Printf.eprintf "%s quota min_depth max_depth\n" Sys.argv.(0)
+    Printf.eprintf "%s times min_depth max_depth\n" Sys.argv.(0)
   else
-    let quota, min_depth, max_depth =
-      Core_bench.Bench.Quota.of_string Sys.argv.(1), int_of_string Sys.argv.(2), int_of_string Sys.argv.(3) in
+    let times, min_depth, max_depth =
+      int_of_string Sys.argv.(1), int_of_string Sys.argv.(2), int_of_string Sys.argv.(3) in
     let depth_list = Generator.gen_list min_depth max_depth (fun n -> n+2) in  (* Seems that big AST have ~20k nodes, cfr. [Erdweg et al.] *)
     let len = List.length depth_list in
     Printf.printf "name, depth, fvc, inv_depth, rate\n"; flush stdout;
@@ -131,15 +106,19 @@ let _ =
       Printf.eprintf "[%d/%d] depth=%d ...\n" (i+1) len depth;
       flush stderr;
         List.iteri (fun j fv_c -> (
-          Printf.eprintf "\t[%d/%d] fv_c=%d ..." (j+1) (List.length fv_c_list) fv_c;
+          Printf.eprintf "\t[%d/%d] fv_c=%d ...\n" (j+1) (List.length fv_c_list) fv_c;
           flush stderr;
-          let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
-          let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
-          let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
-          let simplified_results = throughput_original_vs_inc quota Core_bench.Verbosity.Quiet e gamma_init inv_depth_list in
-          print_csv (extract_minimal simplified_results depth fv_c);
-          Printf.eprintf "done!\n";
-          flush stderr;
+          List.iteri (fun k inv_depth ->
+            Printf.eprintf "\t\t[%d/%d] inv_depth=%d ... " (k+1) (List.length inv_depth_list) inv_depth;
+            flush stderr;
+            let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
+            let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
+            let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
+            let simplified_results = throughput_original_vs_inc times Core_bench.Verbosity.Quiet e gamma_init inv_depth in
+              print_csv (extract_minimal simplified_results depth fv_c);
+              Printf.eprintf "done!\n";
+              flush stderr;
+          ) inv_depth_list
         )) fv_c_list
         )
       )

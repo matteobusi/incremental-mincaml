@@ -81,7 +81,38 @@ struct
         let aast = compute_aast gamma t in
             _build_cache aast t gamma cache; aast
 
-    let typing c gamma t =
+    let rec typing c gamma t =
+        let miss c hash gamma =
+            (match Cache.find_option c hash with
+            | None -> None (* This is a miss, w/o any corresponding element in cache *)
+            | Some (gamma', res') ->
+                if L.compat gamma gamma' t then
+                    Some res' (* This is a hit! *)
+                else
+                    None
+            ) in
+        let (hash, fvs) = L.term_getannot t in
+        let ts = L.get_sorted_children t in
+            match ts with
+            | [] -> (* Call the original algorithm and update the cache *)
+                (let r = OriginalFunAlgorithm.typing gamma t in
+                    Cache.replace c hash (gamma, r); r)
+            | _ -> (* This is the inductive case, either a hit or a miss *)
+                (match miss c hash gamma with
+                | None -> (* This is a miss *)
+                    (
+                    (* Here's the difference w. paper:
+                        copy the cache and update it only in the end to be faithful to the paper! *)
+                    let rs = List.fold_left (fun rs (i, ti) -> rs@[typing c (L.tr i ti t gamma rs) ti]) [] ts in
+                        (match L.checkjoin t gamma rs with
+                        | None ->
+                            List.iter (fun t -> Printf.printf "child (%d) - %s \n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t))) ts;
+                            List.iter (fun r -> Printf.printf "child res: %s\n" (L.string_of_type r)) rs;
+                            failwith "Incremental CheckJoin failed!"
+                        | Some res -> Cache.replace c hash (gamma, res); res))
+                | Some res -> res)
+
+    let typing_report c gamma t =
         let rec _typing c gamma (t : (int * VarSet.t) L.term) (at : (IncrementalReport.node_visit_type ref) L.term) =
             let miss c hash gamma =
                 (match Cache.find_option c hash with

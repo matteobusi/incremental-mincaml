@@ -4,8 +4,8 @@ include Hashtbl.Make
 (struct
     type t = string
     let compare = String.compare
-    (* let hash = Hashtbl.hash *)
-    let hash = Hashtbl.hash_param max_int max_int
+    let hash = Hashtbl.hash
+    (* let hash = Hashtbl.hash_param max_int max_int *)
     let equal = String.equal
 end)
 

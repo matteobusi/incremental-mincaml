@@ -4,7 +4,6 @@ open Core_bench.Simplified_benchmark
 open Core_bench.Simplified_benchmark.Result
 open Core_bench.Simplified_benchmark.Results
 open Batteries
-open QCheck
 
 module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
 module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
@@ -24,43 +23,44 @@ let inc_n = "inc" (* Just the incremental typing algorithm *)
 let theo_diff num_fact xi_invalidated =
   (if xi_invalidated = 1 then (2 + 4*(num_fact - 2)) else ((xi_invalidated - 1) + 4*(num_fact - xi_invalidated))) + 5
 
-let throughput_original_vs_inc quota verbosity num_fact e gamma_init (xi_invalidated : int) =
+let throughput_original_vs_inc times verbosity num_fact e gamma_init xi_invalidated =
   let nc = Generator.nodecount e in
   let cache = IncrementalFunAlgorithm.get_empty_cache nc in
     ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
     ignore (Generator.simulate_fullchange cache e xi_invalidated);
-    let new_sz = IncrementalFunAlgorithm.Cache.length cache in
   (* FIXME: In Core_bench the maximum number of samples seems to be equal to max_samples=3000, cfr. l.29 of Benchmark.ml *)
-  let max_samples = 10000 in
-  let copies = Array.init max_samples (fun _ -> IncrementalFunAlgorithm.Cache.copy cache) in
-  let c_counter = ref 0 in
-  let measures = Bench.measure
-    ~run_config:(Core_bench.Std.Bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
-    [
-      Bench.Test.create ~name:(orig_n ^ ":" ^ (string_of_int xi_invalidated))
-        (fun () -> OriginalFunAlgorithm.typing gamma_init e);
-      (* Bench.Test.create ~name:finc_n
-        (let cache = IncrementalFunAlgorithm.get_empty_cache nc in
-            ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
-            fun () -> IncrementalFunAlgorithm.typing cache gamma_init e
+    let copies = Array.init times (fun _ -> IncrementalFunAlgorithm.Cache.copy cache) in
+    let c_counter = ref 0 in
+    let quota = Core_bench.Std.Bench.Quota.of_string ((string_of_int times) ^ "x") in
+    let measures = Bench.measure
+      ~run_config:(Core_bench.Std.Bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
+      [
+        Bench.Test.create ~name:(orig_n ^ ":" ^ (string_of_int xi_invalidated))
+          (fun () ->
+            OriginalFunAlgorithm.typing gamma_init e
+          );
+        (* Bench.Test.create ~name:finc_n
+          (let cache = IncrementalFunAlgorithm.get_empty_cache nc in
+              ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
+              fun () -> IncrementalFunAlgorithm.typing cache gamma_init e
+          );
+        Bench.Test.create ~name:einc_n
+          (fun () -> IncrementalFunAlgorithm.typing (IncrementalFunAlgorithm.get_empty_cache nc) gamma_init e); *)
+        Bench.Test.create ~name:(inc_n ^ ":" ^ (string_of_int xi_invalidated))
+        (
+          fun () ->
+            incr c_counter;
+            (* assert (IncrementalFunAlgorithm.Cache.length copies.(!c_counter - 1) = new_sz); *)
+            IncrementalFunAlgorithm.typing copies.(!c_counter - 1) gamma_init e
         );
-      Bench.Test.create ~name:einc_n
-        (fun () -> IncrementalFunAlgorithm.typing (IncrementalFunAlgorithm.get_empty_cache nc) gamma_init e); *)
-      Bench.Test.create ~name:(inc_n ^ ":" ^ (string_of_int xi_invalidated))
-      (
-        fun () ->
-          incr c_counter;
-          (* assert (IncrementalFunAlgorithm.Cache.length copies.(!c_counter - 1) = new_sz); *)
-          IncrementalFunAlgorithm.typing copies.(!c_counter - 1) gamma_init e
-      );
-    ] in
-  let results = List.map Bench.analyze measures in
-  let results = List.filter_map
-    (fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
-      | Error err -> Printf.eprintf "(dexperiments.ml:59) Warning: test omitted since %s.\n" (Core.Error.to_string_hum err); None
-      | Ok r -> Some r) results in
-  (* Ugly hack, should use extract but it is not exposed by the interface! *)
-  Core_bench.Simplified_benchmark.Results.t_of_sexp (Core_bench.Simplified_benchmark.to_sexp results)
+      ] in
+    let results = List.map Bench.analyze measures in
+    let results = List.filter_map
+      (fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
+        | Error err -> Printf.eprintf "(dexperiments.ml:59) Warning: test omitted since %s.\n" (Core.Error.to_string_hum err); None
+        | Ok r -> Some r) results in
+    (* Ugly hack, should use extract but it is not exposed by the interface! *)
+    Core_bench.Simplified_benchmark.Results.t_of_sexp (Core_bench.Simplified_benchmark.to_sexp results)
 
 module MinimalResult = struct
     type t =
@@ -196,28 +196,28 @@ let _ = QCheck_runner.run_tests_main [test] *)
 
 
 let _ =
-   if Array.length Sys.argv < 6 then
-    Printf.eprintf "Usage: %s quota min max step n_intervals\n" Sys.argv.(0)
+   if Array.length Sys.argv < 5 then
+    Printf.eprintf "Usage: %s times min max step\n" Sys.argv.(0)
   else
-    let quota, min, max, step, n_intervals = Core_bench.Bench.Quota.of_string Sys.argv.(1),
+    let times, min, max, n_intervals =
+      int_of_string Sys.argv.(1),
       int_of_string Sys.argv.(2),
       int_of_string Sys.argv.(3),
-      int_of_string Sys.argv.(4),
-      int_of_string Sys.argv.(5) in
-    let n_list = Generator.gen_list min max (fun c -> c + step) in
+      int_of_string Sys.argv.(4) in
+    let n_list = Generator.gen_list min max (fun c -> c * 2) in
     let annotated_fact e = annotate_fv (OriginalFunAlgorithm.term_map (fun e -> compute_hash e) e) in
     let prog_list = List.map (fun n -> (n,  annotated_fact (Generator.fact_unroll n))) n_list in
     let len = List.length prog_list in
     Printf.printf "name, num_fact, xi_invalidated, diffsz, rate\n"; flush stdout;
     List.iteri (fun i (n, e) -> (
-      let interval_list = Generator.gen_list 1 n (fun s -> s + (n-1)/(n_intervals - 1)) in
+      let interval_list = Generator.gen_list 1 n (fun s -> s + int_of_float (0.5 +. float_of_int (n-1)/. float_of_int (n_intervals - 1))) in
       Printf.eprintf "[%d/%d] n=%d ...\n" (i+1) len n;
       flush stderr;
         List.iteri (fun j s -> (
           Printf.eprintf "\t[%d/%d] x_%d ..." (j+1) (List.length interval_list) s;
           flush stderr;
           let gamma_init = FunContext.get_empty_context () in
-          let simplified_results = throughput_original_vs_inc quota Core_bench.Verbosity.Quiet n e gamma_init s in
+          let simplified_results = throughput_original_vs_inc times Core_bench.Verbosity.Quiet n e gamma_init s in
             print_csv (extract_minimal simplified_results n s);
             Printf.eprintf "done!\n";
             flush stderr;

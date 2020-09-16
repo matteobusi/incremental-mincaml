@@ -47,26 +47,34 @@ def plot_on_pdf (filename, res):
                 add_res_orig = res_3[res_3["name"].str.startswith(orig_n)].drop(["name", "depth", "fvc"], axis=1).groupby(["inv_depth"]).mean().reset_index()
                 add_res_inc  = res_3[res_3["name"].str.startswith(inc_n)].drop(["name", "depth", "fvc"], axis=1).groupby(["inv_depth"]).mean().reset_index()
 
-                add_res_orig["diffsz"] = depth - add_res_orig["inv_depth"]
-                add_res_inc["diffsz"] = depth - add_res_inc["inv_depth"]
+                add_res_orig["diffsz"] = (2 ** (depth - add_res_orig["inv_depth"])) + add_res_orig["inv_depth"]
+                add_res_inc["diffsz"] = (2 ** (depth - add_res_inc["inv_depth"])) + add_res_inc["inv_depth"]
+
+                # add_res_orig["diffsz"] = add_res_orig["inv_depth"]
+                # add_res_inc["diffsz"] = add_res_inc["inv_depth"]
 
                 add_res_orig = add_res_orig.drop(["inv_depth"], axis=1)
                 add_res_inc = add_res_inc.drop(["inv_depth"], axis=1)
 
-                # Repeat the row
-                # rate = add_res_orig["rate"].values[0]
-                # add_res_orig = pandas.DataFrame()
-                # for dsz in add_res_inc.drop(["rate"], axis=1).values:
-                #     add_res_orig = add_res_orig.append({"diffsz":int(dsz[0]), "rate":rate}, ignore_index=True)
-
-                # plt.title("transf = {}; depth = {}; fv_c = {}".format(transf, depth, fvc))
-                add_res_orig.plot(x="diffsz", y="rate", ax=ax, label=orig_n, marker='+', color='blue', linewidth=2, linestyle='dashed') # BLUE
+                add_res_orig.plot(x="diffsz", y="rate", ax=ax, label=orig_n, marker='d', color='violet', linewidth=2, linestyle='dashed') # BLUE
                 add_res_inc.plot(x="diffsz", y="rate", ax=ax, label=inc_n, marker='o', color='orange', linewidth=2) # ORANGE
 
-                plt.xticks(np.arange(min(add_res_orig["diffsz"]), max(add_res_orig["diffsz"]) + 1, 1.0))
-                # if depth == 12 and (fvc==512 or fvc==2048 or fvc==1024):
-                #     plt.yticks(np.arange(0, 8000, 1000))
-                plt.xlabel("$\log_2 (\mathit{\# nodes\_diff} + 1)$")
+                ymax = max (
+                [
+                    max(add_res_orig["rate"]),
+                    max(add_res_inc["rate"]),
+                ]
+                )
+
+                ymin = max ([ 0, min (
+                [
+                    min(add_res_orig["rate"]),
+                    min(add_res_inc["rate"]),
+                ]
+                ) - 1])
+
+                plt.yticks(np.arange(ymin, ymax + 1, (ymax-ymin+1)/10))
+                plt.xlabel("$\mathit{diff\_sz}$")
                 plt.ylabel("re-typings/$s$")
 
                 pdf.savefig()
@@ -101,8 +109,8 @@ if __name__ == "__main__":
         #         pdf.savefig()
         #         plt.close()
 
-        tabulate(res, [(16,1), (16, 2**7), (16, 2**9), (16, 2**11), (16, 2**13), (16, 2**15)])
-        tabulate(res, [(14,1), (14, 2**7), (14, 2**9), (14, 2**11), (14, 2**13)])
-        tabulate(res, [(12,1), (12, 2**7), (12, 2**9), (12, 2**11)])
+        # tabulate(res, [(16,1), (16, 2**7), (16, 2**9), (16, 2**11), (16, 2**13), (16, 2**15)])
+        # tabulate(res, [(14,1), (14, 2**7), (14, 2**9), (14, 2**11), (14, 2**13)])
+        # tabulate(res, [(12,1), (12, 2**7), (12, 2**9), (12, 2**11)])
 
         plot_on_pdf("{}/".format(sys.argv[2]) + "tres_{}_{}.pdf", res)

@@ -22,7 +22,7 @@ mexperiments:
 	ocamlbuild -use-ocamlfind -pkg batteries,landmarks,ocamlgraph mexperiments.native
 
 dexperiments:
-	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,core,core_bench,qcheck dexperiments.native
+	ocamlbuild -tag thread -use-ocamlfind -cflag -unsafe -pkg batteries,core,core_bench dexperiments.native
 
 all: default test mexperiments texperiments
 

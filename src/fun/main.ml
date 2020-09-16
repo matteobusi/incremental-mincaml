@@ -128,7 +128,7 @@ let lbl_of_term e =
 module Node = struct
    type t = int * (string * (IncrementalFunAlgorithm.IncrementalReport.node_visit_type ref))
    let compare = Stdlib.compare
-   let hash = Hashtbl.hash
+   let hash = FunSpecification.FunSpecification.compute_hash
    let equal = (=)
 end
 
@@ -203,7 +203,7 @@ let analyze_expr (file : string) (filem : string) =
     let te = OriginalFunAlgorithm.typing gamma_init e_hf in
     Printf.printf "... done\n"; flush stdout;
     Printf.printf "Incremental typing "; flush stdout;
-    let tem = IncrementalFunAlgorithm.typing cache gamma_initm em_hf in
+    let tem = IncrementalFunAlgorithm.typing_report cache gamma_initm em_hf in
       Printf.printf "... done\n"; flush stdout;
       Printf.printf "Type: %s - IType: %s\n" (FunSpecification.FunSpecification.string_of_type te) (FunSpecification.FunSpecification.string_of_type tem);
       Printf.printf "%s\n" (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report);

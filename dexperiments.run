@@ -1,14 +1,13 @@
 #!/bin/sh
 
-Q=$1
+TIMES=$1
 NMIN=$2
 NMAX=$3
-NSTEP=$4
-INT=$5
+INT=$4
 
-FN="dresults-$Q-$NMIN-$NMAX-$NSTEP-$INT.csv"
-PD="plots-$Q-$NMIN-$NMAX-$NSTEP-$INT/"
+FN="dresults-$TIMES-$NMIN-$NMAX-$INT.csv"
+PD="dplots-$TIMES-$NMIN-$NMAX-$INT/"
 
-./dexperiments.native $Q $NMIN $NMAX $NSTEP $INT > $FN
+./dexperiments.native $TIMES $NMIN $NMAX $INT > $FN
 mkdir -p $PD
 python analysis/danalyze.py $FN $PD
