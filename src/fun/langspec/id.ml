@@ -1,4 +1,4 @@
-open Batteries
+open Core
 open FunSpecification.FunSpecification
 
 (* From https://github.com/esumii/min-caml *)

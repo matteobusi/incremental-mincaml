@@ -7,24 +7,24 @@ $(TARGET): default
 default: $(TARGET).native
 
 %.native:
-	ocamlbuild -use-ocamlfind -pkg batteries,ocamlgraph $@
+	ocamlbuild  -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ocamlgraph $@
 
 %.byte:
-	ocamlbuild -use-ocamlfind -pkg batteries,ocamlgraph $@
+	ocamlbuild  -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ocamlgraph $@
 
 test: default
-	ocamlbuild -use-ocamlfind -pkg batteries,ounit2,ocamlgraph $@.native
+	ocamlbuild  -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ounit2,ocamlgraph $@.native
 
 texperiments:
-	ocamlbuild -tag thread -use-ocamlfind -pkg batteries,core,ocamlgraph,core_bench texperiments.native
+	ocamlbuild -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ocamlgraph,core_bench texperiments.native
 
 mexperiments:
-	ocamlbuild -use-ocamlfind -pkg batteries,landmarks,ocamlgraph mexperiments.native
+	ocamlbuild  -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,landmarks,ocamlgraph mexperiments.native
 
 dexperiments:
-	ocamlbuild -tag thread -use-ocamlfind -cflag -unsafe -pkg batteries,core,core_bench dexperiments.native
+	ocamlbuild -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,core_bench dexperiments.native
 
-all: default test mexperiments texperiments
+all: default test mexperiments texperiments dexperiments
 
 clean:
 	ocamlbuild -clean

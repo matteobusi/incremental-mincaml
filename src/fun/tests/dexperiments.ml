@@ -3,14 +3,15 @@ open Core_bench.Std
 open Core_bench.Simplified_benchmark
 open Core_bench.Simplified_benchmark.Result
 open Core_bench.Simplified_benchmark.Results
-open Batteries
+open Core
+
+open FunSpecification.FunSpecification
+open VarSet
+open Generator
 
 module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
 module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
 
-open FunSpecification.FunSpecification
-
-open VarSet
 
 (* Names of the experiments *)
 let orig_n = "orig" (* Original typing algorithm *)
@@ -24,8 +25,7 @@ let theo_diff num_fact xi_invalidated =
   (if xi_invalidated = 1 then (2 + 4*(num_fact - 2)) else ((xi_invalidated - 1) + 4*(num_fact - xi_invalidated))) + 5
 
 let throughput_original_vs_inc times verbosity num_fact e gamma_init xi_invalidated =
-  let nc = Generator.nodecount e in
-  let cache = IncrementalFunAlgorithm.get_empty_cache nc in
+  let cache = IncrementalFunAlgorithm.get_empty_cache () in
     ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
     ignore (Generator.simulate_fullchange cache e xi_invalidated);
   (* FIXME: In Core_bench the maximum number of samples seems to be equal to max_samples=3000, cfr. l.29 of Benchmark.ml *)
@@ -54,9 +54,9 @@ let throughput_original_vs_inc times verbosity num_fact e gamma_init xi_invalida
             IncrementalFunAlgorithm.typing copies.(!c_counter - 1) gamma_init e
         );
       ] in
-    let results = List.map Bench.analyze measures in
+    let results = List.map ~f:Bench.analyze measures in
     let results = List.filter_map
-      (fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
+      ~f:(fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
         | Error err -> Printf.eprintf "(dexperiments.ml:59) Warning: test omitted since %s.\n" (Core.Error.to_string_hum err); None
         | Ok r -> Some r) results in
     (* Ugly hack, should use extract but it is not exposed by the interface! *)
@@ -74,7 +74,7 @@ module MinimalResult = struct
 end
 
 let split_name name =
-  match String.split_on_char ':' name with
+  match String.split ~on:':' name with
   | [n] -> (n, -1)
   | [n; inv_depth] -> (n, Int.of_string inv_depth)
   | _ -> Printf.eprintf "Name: '%s'\n" name; failwith "Error: does the experiment name contains more than one ':'?"
@@ -90,11 +90,11 @@ let extract_minimal (results : Core_bench.Simplified_benchmark.Results.t) num_fa
       diffsz = theo_diff num_fact xi_invalidated;
       rate = rate_of_time r.time_per_run_nanos
     }) in
-  (List.map project results)
+  (List.map ~f:project results)
 
 let print_csv (mr_list : MinimalResult.t list) =
   List.iter
-  (fun (mr : MinimalResult.t) -> Printf.printf "%s, %d, %d, %d, %f\n" mr.name mr.num_fact mr.xi_invalidated mr.diffsz mr.rate; flush stdout) mr_list
+  ~f:(fun (mr : MinimalResult.t) -> Printf.printf "%s, %d, %d, %d, %f\n" mr.name mr.num_fact mr.xi_invalidated mr.diffsz mr.rate; flush stdout) mr_list
 
 (* FIXME: duplicate from main.ml; Is there a common place to put this one into? *)
 let rec annotate_fv e =
@@ -124,21 +124,20 @@ let rec annotate_fv e =
     | Let(x, e1, e2, annot) ->
       let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
         Let (x, ae1, ae2,
-          (annot,
-            VarSet.remove x (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2)))))
+          (annot, VarSet.remove (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) x))
     | LetRec ({ name = (fn, ft); args = yts; body = e1 }, e2, annot) ->
       let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
-        let lrfv = List.fold_left (fun a x -> VarSet.remove x a) (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) (fn::(List.map fst yts)) in
+        let lrfv = List.fold_left (fn::(List.map yts ~f:fst)) ~init:(VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) ~f:VarSet.remove in
           LetRec ({ name = (fn, ft); args = yts; body = ae1 }, ae2, (annot, lrfv))
     | App (e1, es, annot) ->
-      let ae1, aes = annotate_fv e1, List.map annotate_fv es in
-        App (ae1, aes, (annot, (List.fold_left (fun afv ae -> VarSet.union afv (snd (term_getannot ae))) VarSet.empty aes)))
+      let ae1, aes = annotate_fv e1, List.map es ~f:annotate_fv in
+        App (ae1, aes, (annot, (List.fold_left aes ~init:VarSet.empty ~f:(fun afv ae -> VarSet.union afv (snd (term_getannot ae))))))
     | Tuple(es, annot) ->
-      let aes = List.map annotate_fv es in
-        Tuple(aes, (annot, (List.fold_left (fun afv ae -> VarSet.union afv (snd (term_getannot ae))) VarSet.empty aes)))
+      let aes = List.map es ~f:annotate_fv in
+        Tuple(aes, (annot, (List.fold_left aes ~init:VarSet.empty ~f:(fun afv ae -> VarSet.union afv (snd (term_getannot ae))))))
     | LetTuple(xs, e1, e2, annot) ->
       let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
-        let lrfv = List.fold_left (fun a x -> VarSet.remove x a) (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) xs in
+        let lrfv = List.fold_left xs ~init:(VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) ~f:VarSet.remove in
           LetTuple(xs, ae1, ae2, (annot, lrfv))
     | Array(e1, e2, annot) ->
       let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
@@ -206,14 +205,14 @@ let _ =
       int_of_string Sys.argv.(4) in
     let n_list = Generator.gen_list min max (fun c -> c * 2) in
     let annotated_fact e = annotate_fv (OriginalFunAlgorithm.term_map (fun e -> compute_hash e) e) in
-    let prog_list = List.map (fun n -> (n,  annotated_fact (Generator.fact_unroll n))) n_list in
+    let prog_list = List.map ~f:(fun n -> (n,  annotated_fact (Generator.fact_unroll n))) n_list in
     let len = List.length prog_list in
     Printf.printf "name, num_fact, xi_invalidated, diffsz, rate\n"; flush stdout;
-    List.iteri (fun i (n, e) -> (
+    List.iteri ~f:(fun i (n, e) -> (
       let interval_list = Generator.gen_list 1 n (fun s -> s + int_of_float (0.5 +. float_of_int (n-1)/. float_of_int (n_intervals - 1))) in
       Printf.eprintf "[%d/%d] n=%d ...\n" (i+1) len n;
       flush stderr;
-        List.iteri (fun j s -> (
+        List.iteri ~f:(fun j s -> (
           Printf.eprintf "\t[%d/%d] x_%d ..." (j+1) (List.length interval_list) s;
           flush stderr;
           let gamma_init = FunContext.get_empty_context () in

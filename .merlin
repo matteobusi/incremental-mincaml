@@ -4,13 +4,15 @@ S src/fun/langspec
 S src/fun/tests
 S src/lib
 
-PKG ounit2
-PKG batteries
-PKG landmarks
-PKG core_bench
 PKG core
-PKG ocamlgraph
+PKG core_bench
 PKG qcheck
+PKG ppx_hash
+PKG ppx_compare
+PKG ppx_sexp_conv
+PKG ounit2
+PKG landmarks
+PKG ocamlgraph
 
 B _build/*
 B _build/src/fun

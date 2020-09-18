@@ -6,7 +6,7 @@ Improvements/fixes:
     - English comments
     - Better errors
 *)
-open Batteries
+open Core
 
 open FunSpecification
 open Parser

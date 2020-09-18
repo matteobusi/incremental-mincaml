@@ -1,10 +1,10 @@
-open Batteries
+open Core
 open Graph
+
+open FunSpecification.FunSpecification
 
 module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
 module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
-
-open FunSpecification.FunSpecification
 
 (* This is the runtime needed *)
 let initial_gamma_list = [
@@ -42,8 +42,8 @@ let rec nodecount e = match e with
   | If(e1, e2, e3, annot) -> 1 + nodecount e1 + nodecount e2 + nodecount e3
   | Let(_, e1, e2, annot) -> 1 + nodecount e1 + nodecount e2 (* curr node + x *)
   | LetRec ({ name = _; args = yts; body = e1 }, e2, annot) -> 1 + nodecount e1 + nodecount e2
-  | App (e1, es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount (e1::es)))
-  | Tuple(es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount es))
+  | App (e1, es, annot) -> 1 + (List.fold_left ~f:(+) ~init:0 (List.map ~f:nodecount (e1::es)))
+  | Tuple(es, annot) -> 1 + (List.fold_left ~f:(+) ~init:0 (List.map ~f:nodecount es))
   | LetTuple(xs, e1, e2, annot) -> 1 + nodecount e1 + nodecount e2
   | Array(e1, e2, annot)
   | Get (e1, e2, annot) -> 1 + nodecount e1 + nodecount e2
@@ -76,21 +76,20 @@ let rec annotate_fv e =
     | Let(x, e1, e2, annot) ->
       let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
         Let (x, ae1, ae2,
-          (annot,
-            VarSet.remove x (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2)))))
+          (annot, VarSet.remove (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) x))
     | LetRec ({ name = (fn, ft); args = yts; body = e1 }, e2, annot) ->
       let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
-        let lrfv = List.fold_left (fun a x -> VarSet.remove x a) (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) (fn::(List.map fst yts)) in
+        let lrfv = List.fold_left (fn::(List.map yts ~f:fst)) ~init:(VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) ~f:VarSet.remove in
           LetRec ({ name = (fn, ft); args = yts; body = ae1 }, ae2, (annot, lrfv))
     | App (e1, es, annot) ->
-      let ae1, aes = annotate_fv e1, List.map annotate_fv es in
-        App (ae1, aes, (annot, (List.fold_left (fun afv ae -> VarSet.union afv (snd (term_getannot ae))) VarSet.empty aes)))
+      let ae1, aes = annotate_fv e1, List.map es ~f:annotate_fv in
+        App (ae1, aes, (annot, (List.fold_left aes ~init:VarSet.empty ~f:(fun afv ae -> VarSet.union afv (snd (term_getannot ae))))))
     | Tuple(es, annot) ->
-      let aes = List.map annotate_fv es in
-        Tuple(aes, (annot, (List.fold_left (fun afv ae -> VarSet.union afv (snd (term_getannot ae))) VarSet.empty aes)))
+      let aes = List.map es ~f:annotate_fv in
+        Tuple(aes, (annot, (List.fold_left aes ~init:VarSet.empty ~f:(fun afv ae -> VarSet.union afv (snd (term_getannot ae))))))
     | LetTuple(xs, e1, e2, annot) ->
       let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
-        let lrfv = List.fold_left (fun a x -> VarSet.remove x a) (VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) xs in
+        let lrfv = List.fold_left xs ~init:(VarSet.union (snd (term_getannot ae1)) (snd (term_getannot ae2))) ~f:VarSet.remove in
           LetTuple(xs, ae1, ae2, (annot, lrfv))
     | Array(e1, e2, annot) ->
       let ae1, ae2 = annotate_fv e1, annotate_fv e2 in
@@ -123,12 +122,12 @@ let lbl_of_term e =
   | LetRec(f, e, annot) -> Format.sprintf "LetRec %s" (fst f.name)
   | App(e, es, annot) -> "App"
   | Tuple(es, annot) -> "Tuple"
-  | LetTuple(bs, e1, e2, annot) -> Format.sprintf "LetTuple%s" (List.fold_left (fun a s -> a ^ " " ^ s) "" bs)
+  | LetTuple(bs, e1, e2, annot) -> Format.sprintf "LetTuple%s" (List.fold_left bs ~init:"" ~f:(fun a s -> a ^ " " ^ s))
 
 module Node = struct
-   type t = int * (string * (IncrementalFunAlgorithm.IncrementalReport.node_visit_type ref))
+   type t = int * (string * ((IncrementalFunAlgorithm.IncrementalReport.node_visit_type ref)))
    let compare = Stdlib.compare
-   let hash = FunSpecification.FunSpecification.compute_hash
+   let hash (h : t) = let (i, (s, _)) = h in [%hash: int * string] (i, s)
    let equal = (=)
 end
 
@@ -165,11 +164,11 @@ let rec mk_graph i e ig =
   let ve = (i, (Printf.sprintf "\"(%d) %s\"" (!cnt) (lbl_of_term e), term_getannot e)) in
   let g = G.add_vertex ig ve in
   let g' = List.fold_left
-    (fun a ec -> (
+    (List.rev cl) ~init:g ~f:(fun a ec -> (
       let vec =
       (fst ec, (Printf.sprintf "\"(%d) %s\"" (use_cnt ()) (lbl_of_term (snd ec)), term_getannot (snd ec))) in
         G.add_edge (mk_graph (fst ec) (snd ec) a) ve vec
-    )) g (List.rev cl)
+    ))
     in g'
 
 let analyze_expr (file : string) (filem : string) =
@@ -194,7 +193,7 @@ let analyze_expr (file : string) (filem : string) =
     (* Printf.printf "Program: %s\n" (FunSpecification.FunSpecification.string_of_term (fun f x -> ()) e);
     Printf.printf "Program Mod: %s\n" (FunSpecification.FunSpecification.string_of_term (fun f x -> ()) em); *)
     Printf.printf "Building the cache "; flush stdout;
-    let cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
+    let cache = IncrementalFunAlgorithm.get_empty_cache () in
     ignore (IncrementalFunAlgorithm.build_cache e_hf gamma_init cache);
     Printf.printf "... done\n"; flush stdout;
     IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;

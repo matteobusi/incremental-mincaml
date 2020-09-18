@@ -1,17 +1,14 @@
-open Batteries
+open Core
 
 open LanguageSpecification
 open Original
 
 (* This is just a POC to show that the process is indeed mechanizable *)
-module TypeAlgorithm
-    (L : LanguageSpecification) =
+module TypeAlgorithm (L : LanguageSpecification) =
 struct
     module OriginalFunAlgorithm = Original.TypeAlgorithm(L)
     module Cache = Hashtbl.Make(struct
-            type t = int
-            let equal i j = i=j
-            let hash i = i
+            type t = int [@@deriving compare,hash,sexp]
           end)
 
     (* Reporting facilities, this is unneeded in a real-world incrementalizer *)
@@ -57,17 +54,17 @@ struct
 
     let report = IncrementalReport.create
 
-    let get_empty_cache sz : (L.context * L.res) Cache.t = Cache.create sz
+    let get_empty_cache sz : (L.context ref * L.res) Cache.t = Cache.create sz
 
-    let build_cache t gamma cache =
+    let build_cache t gamma (cache : (L.context ref * L.res) Cache.t) =
         (* Same Original.TypeAlgorithm.typing but returns an aAST *)
         let rec compute_aast gamma t =
             let ts = L.get_sorted_children t in
-            let ats = List.fold_left (fun rs (i, ti) -> rs@[compute_aast (L.tr i ti t gamma (List.map (fst%L.term_getannot) rs)) ti]) [] ts in
-            (match L.checkjoin t gamma (List.map (fst%L.term_getannot) ats) with
+            let ats = List.fold_left ts ~init:[] ~f:(fun rs (i, ti) -> rs@[compute_aast (L.tr i ti t gamma (List.map rs ~f:(Fn.compose fst L.term_getannot))) ti]) in
+            (match L.checkjoin t gamma (List.map ats ~f:(Fn.compose fst L.term_getannot)) with
             | None ->
                 Printf.printf "\nFailed typing at: %s\n" (L.string_of_term (fun _ _ -> ()) t);
-                List.iter (fun t -> Printf.printf "child %d: %s\n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t))) ts;
+                List.iter ts ~f:(fun t -> Printf.printf "child %d: %s\n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t)));
                 Printf.printf "context: %s \n\n" (L.string_of_context gamma);
                 failwith "(incrementalizer.ml, l.43) buildcache: CheckJoin failed!"
             | Some r -> L.term_edit t ats (r, L.term_getannot t)) in
@@ -75,18 +72,19 @@ struct
             let (res, (hash, fvs)) = L.term_getannot t in
             let ts = (L.get_sorted_children t) in
             let ts_hf = (L.get_sorted_children t_hf) in
-            let rs = List.map (fst%L.term_getannot%snd) ts in
-                Cache.replace cache hash (gamma, res);
-                List.iter (fun ((i, ti), (_, ti_hf)) -> _build_cache ti ti_hf (L.tr i ti_hf t_hf gamma (List.take i rs)) cache) (List.combine ts ts_hf) in
+            let rs = List.map ts ~f:(Fn.compose fst (Fn.compose L.term_getannot snd)) in
+                Cache.set cache hash (ref gamma, res);
+                List.iter (List.zip_exn ts ts_hf) ~f:(fun ((i, ti), (_, ti_hf)) -> _build_cache ti ti_hf (L.tr i ti_hf t_hf gamma (List.take rs i)) cache) in
         let aast = compute_aast gamma t in
             _build_cache aast t gamma cache; aast
 
-    let rec typing c gamma t =
-        let miss c hash gamma =
-            (match Cache.find_option c hash with
+    let rec typing (cache : (L.context ref * L.res) Cache.t) gamma t =
+        let miss (cache : (L.context ref * L.res) Cache.t) hash gamma =
+            (match Cache.find cache hash with
             | None -> None (* This is a miss, w/o any corresponding element in cache *)
             | Some (gamma', res') ->
-                if L.compat gamma gamma' t then
+                (* TODO: possible optimization: check whether gamma and gamma' refer to the same location -- this requires changing cache update implementation *)
+                if L.compat gamma !gamma' t then
                     Some res' (* This is a hit! *)
                 else
                     None
@@ -96,30 +94,30 @@ struct
             match ts with
             | [] -> (* Call the original algorithm and update the cache *)
                 (let r = OriginalFunAlgorithm.typing gamma t in
-                    Cache.replace c hash (gamma, r); r)
+                    Cache.set cache hash (ref gamma, r); r)
             | _ -> (* This is the inductive case, either a hit or a miss *)
-                (match miss c hash gamma with
+                (match miss cache hash gamma with
                 | None -> (* This is a miss *)
                     (
                     (* Here's the difference w. paper:
                         copy the cache and update it only in the end to be faithful to the paper! *)
-                    let rs = List.fold_left (fun rs (i, ti) -> rs@[typing c (L.tr i ti t gamma rs) ti]) [] ts in
+                    let rs = List.fold_left ts ~init:[] ~f:(fun rs (i, ti) -> rs@[typing cache (L.tr i ti t gamma rs) ti]) in
                         (match L.checkjoin t gamma rs with
                         | None ->
-                            List.iter (fun t -> Printf.printf "child (%d) - %s \n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t))) ts;
-                            List.iter (fun r -> Printf.printf "child res: %s\n" (L.string_of_type r)) rs;
+                            List.iter ts ~f:(fun t -> Printf.printf "child (%d) - %s \n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t)));
+                            List.iter rs ~f:(fun r -> Printf.printf "child res: %s\n" (L.string_of_type r));
                             failwith "Incremental CheckJoin failed!"
-                        | Some res -> Cache.replace c hash (gamma, res); res))
+                        | Some res -> Cache.set cache hash (ref gamma, res); res))
                 | Some res -> res)
 
-    let typing_report c gamma t =
-        let rec _typing c gamma (t : (int * VarSet.t) L.term) (at : (IncrementalReport.node_visit_type ref) L.term) =
-            let miss c hash gamma =
-                (match Cache.find_option c hash with
+    let typing_report (cache : (L.context ref * L.res) Cache.t) gamma t =
+        let rec _typing (cache : (L.context ref * L.res) Cache.t) gamma (t : (int * VarSet.t) L.term) (at : (IncrementalReport.node_visit_type ref) L.term) =
+            let miss (cache : (L.context ref * L.res) Cache.t) hash gamma =
+                (match Cache.find cache hash with
                 | None ->
                     IncrementalReport.register_miss_none report; None (* This is a miss, w/o any corresponding element in cache *)
                 | Some (gamma', res') ->
-                    if L.compat gamma gamma' t then
+                    if L.compat gamma !gamma' t then
                         (IncrementalReport.register_hit report; Some res') (* This is a hit! *)
                     else
                         (IncrementalReport.register_miss_incomp report; None)) in
@@ -130,28 +128,28 @@ struct
                     (let r = OriginalFunAlgorithm.typing gamma t in
                         IncrementalReport.register_orig_call report;
                         (L.term_getannot at) := IncrementalReport.Orig;
-                        Cache.replace c hash (gamma, r); r)
+                        Cache.set cache hash (ref gamma, r); r)
                 | _ -> (* This is the inductive case, either a hit or a miss *)
-                    (match miss c hash gamma with
+                    (match miss cache hash gamma with
                     | None -> (* This is a miss *)
                         (
                         (* Here's the difference w. paper:
                             copy the cache and update it only in the end to be faithful to the paper! *)
                         let ats = L.get_sorted_children at in
-                        let cats = List.combine ts ats in
+                        let cats = List.zip_exn ts ats in
                         L.term_getannot at := IncrementalReport.Miss;
-                        let rs = List.fold_left (fun rs ((i, ti), (_, ati)) -> rs@[_typing c (L.tr i ti t gamma rs) ti ati]) [] cats in
+                        let rs = List.fold_left cats ~init:[] ~f:(fun rs ((i, ti), (_, ati)) -> rs@[_typing cache (L.tr i ti t gamma rs) ti ati]) in
                             (match L.checkjoin t gamma rs with
                             | None ->
-                                List.iter (fun t -> Printf.printf "child (%d) - %s \n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t))) ts;
-                                List.iter (fun r -> Printf.printf "child res: %s\n" (L.string_of_type r)) rs;
+                                List.iter ts ~f:(fun t -> Printf.printf "child (%d) - %s \n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t)));
+                                List.iter rs ~f:(fun r -> Printf.printf "child res: %s\n" (L.string_of_type r));
                                 failwith "Incremental CheckJoin failed!"
-                            | Some res -> Cache.replace c hash (gamma, res); res))
+                            | Some res -> Cache.set cache hash (ref gamma, res); res))
                     | Some res ->
                         L.term_getannot at := IncrementalReport.Hit;
                         res)
         in
             let annot_t = OriginalFunAlgorithm.term_map (fun ct -> ref IncrementalReport.NoVisit) t in
-            let res = _typing c gamma t annot_t in
+            let res = _typing cache gamma t annot_t in
                 report.annot_t <- Some annot_t; res
 end

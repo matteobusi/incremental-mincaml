@@ -1,17 +1,17 @@
-(* open Core *)
+open Core
 open Core_bench.Std
 open Core_bench.Simplified_benchmark
 open Core_bench.Simplified_benchmark.Result
 open Core_bench.Simplified_benchmark.Results
-open Batteries
+
+open Generator
+
+open FunSpecification.FunSpecification
+open VarSet
 
 module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
 module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
 
-open FunSpecification.FunSpecification
-
-open Generator
-open VarSet
 
 (* Names of the experiments *)
 let orig_n = "orig" (* Original typing algorithm *)
@@ -20,10 +20,9 @@ let finc_n = "finc" (* Incremental typing algorithm w. full initial cache *)
 let inc_n = "inc" (* Just the incremental typing algorithm *)
 
 let throughput_original_vs_inc times verbosity e gamma_init inv_depth =
-  let nc = Generator.nodecount e in
   let quota = Core_bench.Std.Bench.Quota.of_string (string_of_int times ^ "x") in
     let copies = Array.init times (fun _ ->
-      let cache = IncrementalFunAlgorithm.Cache.copy (IncrementalFunAlgorithm.get_empty_cache nc) in
+      let cache = IncrementalFunAlgorithm.Cache.copy (IncrementalFunAlgorithm.get_empty_cache ()) in
         ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
         Generator.simulate_modification cache e inv_depth;
         cache
@@ -49,9 +48,9 @@ let throughput_original_vs_inc times verbosity e gamma_init inv_depth =
             IncrementalFunAlgorithm.typing copies.(!c_counter - 1) gamma_init e
           );
       ] in
-    let results = List.map Bench.analyze measures in
+    let results = List.map ~f:Bench.analyze measures in
     let results = List.filter_map
-      (fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
+      ~f:(fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
         | Error err -> Printf.printf "Error %s\n%!" (Core.Error.to_string_hum err); None
         | Ok r -> Some r) results in
     (* Ugly hack, should use extract but it is not exposed by the interface! *)
@@ -69,7 +68,7 @@ module MinimalResult = struct
 end
 
 let split_name name =
-  match String.split_on_char ':' name with
+  match String.split ~on:':' name with
   | [n] -> (n, -1)
   | [n; inv_depth] -> (n, Int.of_string inv_depth)
   | _ -> Printf.eprintf "Name: '%s'\n" name; failwith "Error: does the experiment name contains more than one ':'?"
@@ -85,11 +84,11 @@ let extract_minimal (results : Core_bench.Simplified_benchmark.Results.t) depth 
       inv_depth = snd (split_name r.full_benchmark_name);
       rate = rate_of_time r.time_per_run_nanos
     }) in
-  List.map project results
+  List.map ~f:project results
 
 let print_csv (mr_list : MinimalResult.t list) =
   List.iter
-  (fun (mr : MinimalResult.t) -> Printf.printf "%s, %d, %d, %d, %f\n" mr.name mr.depth mr.fvc mr.inv_depth mr.rate; flush stdout) mr_list
+  ~f:(fun (mr : MinimalResult.t) -> Printf.printf "%s, %d, %d, %d, %f\n" mr.name mr.depth mr.fvc mr.inv_depth mr.rate; flush stdout) mr_list
 
 let _ =
    if Array.length Sys.argv < 4 then
@@ -100,19 +99,19 @@ let _ =
     let depth_list = Generator.gen_list min_depth max_depth (fun n -> n+2) in  (* Seems that big AST have ~20k nodes, cfr. [Erdweg et al.] *)
     let len = List.length depth_list in
     Printf.printf "name, depth, fvc, inv_depth, rate\n"; flush stdout;
-    List.iteri (fun i depth -> (
-      let fv_c_list = 1 :: Generator.gen_list (BatInt.pow 2 7) (BatInt.pow 2 (depth-1)) (fun n -> n*2) in
+    List.iteri ~f:(fun i depth -> (
+      let fv_c_list = 1 :: Generator.gen_list (Generator.pow 2 7) (Generator.pow 2 (depth-1)) (fun n -> n*2) in
       let inv_depth_list = [1; 2; 3] @ Generator.gen_list 4 (depth - 1) (fun n -> n + 2) in
       Printf.eprintf "[%d/%d] depth=%d ...\n" (i+1) len depth;
       flush stderr;
-        List.iteri (fun j fv_c -> (
+        List.iteri ~f:(fun j fv_c -> (
           Printf.eprintf "\t[%d/%d] fv_c=%d ...\n" (j+1) (List.length fv_c_list) fv_c;
           flush stderr;
-          List.iteri (fun k inv_depth ->
+          List.iteri ~f:(fun k inv_depth ->
             Printf.eprintf "\t\t[%d/%d] inv_depth=%d ... " (k+1) (List.length inv_depth_list) inv_depth;
             flush stderr;
             let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
-            let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
+            let initial_gamma_list e = (List.map ~f:(fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
             let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
             let simplified_results = throughput_original_vs_inc times Core_bench.Verbosity.Quiet e gamma_init inv_depth in
               print_csv (extract_minimal simplified_results depth fv_c);

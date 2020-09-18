@@ -1,8 +1,8 @@
 (* Sets of variables *)
-open Batteries
+open Core
 
 include Set.Make
     (struct
       type t = string
-      let compare = String.compare
+      [@@deriving compare,sexp]
     end)

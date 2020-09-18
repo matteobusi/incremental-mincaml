@@ -1,10 +1,10 @@
-open Batteries
-
-module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
-module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
+open Core
 
 open FunSpecification.FunSpecification
 open VarSet
+
+module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
+module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
 
 let gen_list min max next =
   let rec gen_aux curr =
@@ -13,7 +13,11 @@ let gen_list min max next =
 
 let rec cartesian a b = match b with
 | [] -> []
-| be :: bs ->  (List.map (fun ae -> (be, ae)) a) @ (cartesian a bs)
+| be :: bs ->  (List.map a ~f:(fun ae -> (be, ae))) @ (cartesian a bs)
+
+let rec pow base exp =
+  if exp <= 0 then 1
+  else base * (pow base (exp-1))
 
 let rec nodecount e = match e with
   | Unit(annot)
@@ -30,8 +34,8 @@ let rec nodecount e = match e with
   | If(e1, e2, e3, annot) -> 1 + nodecount e1 + nodecount e2 + nodecount e3
   | Let(_, e1, e2, annot) -> 2 + nodecount e1 + nodecount e2 (* curr node + x *)
   | LetRec ({ name = _; args = yts; body = e1 }, e2, annot) -> 2 + (List.length yts) + nodecount e1 + nodecount e2
-  | App (e1, es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount (e1::es)))
-  | Tuple(es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount es))
+  | App (e1, es, annot) -> 1 + (List.fold_left ~f:(+) ~init:0 (List.map ~f:nodecount (e1::es)))
+  | Tuple(es, annot) -> 1 + (List.fold_left ~f:(+) ~init:0 (List.map ~f:nodecount es))
   | LetTuple(xs, e1, e2, annot) -> 1 + List.length xs + nodecount e1 + nodecount e2
   | Array(e1, e2, annot)
   | Get (e1, e2, annot) -> nodecount e1 + nodecount e2
@@ -57,7 +61,7 @@ let gen_ibop_ids_ast h ibop k =
 (* Invalidate the entries corresponding to the rightmost subtree at depth d (0 for the root) in e to simulate a modification to e *)
 let rec simulate_modification cache e d =
   let rec invalidate_cache cache e =
-    IncrementalFunAlgorithm.Cache.remove_all cache (fst (term_getannot e));
+    IncrementalFunAlgorithm.Cache.remove cache (fst (term_getannot e));
     match e with (* Restricted to IBop and Var *)
     | Var(id, _) -> ()
     | IBop(op, l, r, _) -> invalidate_cache cache l; invalidate_cache cache r
@@ -67,7 +71,7 @@ let rec simulate_modification cache e d =
   | (_, 0) -> invalidate_cache cache e
   | (Var(_, _), _) -> failwith "simulate_modification: d is too big!"
   | (IBop(_, _, r, _), _) ->
-    IncrementalFunAlgorithm.Cache.remove_all cache (fst (term_getannot e));
+    IncrementalFunAlgorithm.Cache.remove cache (fst (term_getannot e));
     simulate_modification cache r (d-1)
   | _ -> failwith "simulate_modification: unsupported aAST."
 
@@ -104,11 +108,11 @@ However since our changes are synthetic and nodes related to i' are expected to 
 *)
 let rec simulate_fullchange cache e i =
   (* Remove all the nodes on the path to let x_i = ... in ... *)
-    IncrementalFunAlgorithm.Cache.remove_all cache (fst (term_getannot e));
+    IncrementalFunAlgorithm.Cache.remove cache (fst (term_getannot e));
     match e with
     | Let (xi, e1, e2, _) ->
       (
-        let i' = int_of_string (String.slice ~first:2 xi) in
+        let i' = int_of_string (String.slice xi 2 0) in
           if i' < i then simulate_fullchange cache e2 i
           else (simulate_fullchange cache e1 i; simulate_fullchange cache e2 i)
       )

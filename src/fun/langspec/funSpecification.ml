@@ -1,4 +1,4 @@
-open Batteries
+open Core
 
 open FunContext
 open LanguageSpecification
@@ -6,26 +6,26 @@ open LanguageSpecification
 module FunSpecification (* : LanguageSpecification *) = struct
     (* Syntax + meta-functions *)
     type 'a term =
-        | Unit of 'a
-        | Bool of bool * 'a
-        | Int of int * 'a
-        | Float of float * 'a
-        | Not of 'a term * 'a
-        | Neg of 'a term * 'a
-        | IBop of string * 'a term * 'a term * 'a
-        | FNeg of 'a term * 'a
-        | FBop of string * 'a term * 'a term * 'a
-        | Rel of string * 'a term * 'a term * 'a
-        | If of 'a term * 'a term * 'a term * 'a
-        | Let of string * 'a term * 'a term * 'a
-        | Var of string * 'a
-        | LetRec of 'a fundef * 'a term * 'a
-        | App of 'a term * 'a term list * 'a
-        | Tuple of 'a term list * 'a
-        | LetTuple of string list * 'a term * 'a term * 'a
-        | Array of 'a term * 'a term * 'a
-        | Get of 'a term * 'a term * 'a
-        | Put of 'a term * 'a term * 'a term * 'a
+        | Unit of ('a [@hash.ignore])
+        | Bool of bool * ('a [@hash.ignore])
+        | Int of int * ('a [@hash.ignore])
+        | Float of float * ('a [@hash.ignore])
+        | Not of 'a term * ('a [@hash.ignore])
+        | Neg of 'a term * ('a [@hash.ignore])
+        | IBop of string * 'a term * 'a term * ('a [@hash.ignore])
+        | FNeg of 'a term * ('a [@hash.ignore])
+        | FBop of string * 'a term * 'a term * ('a [@hash.ignore])
+        | Rel of string * 'a term * 'a term * ('a [@hash.ignore])
+        | If of 'a term * 'a term * 'a term * ('a [@hash.ignore])
+        | Let of string * 'a term * 'a term * ('a [@hash.ignore])
+        | Var of string * ('a [@hash.ignore])
+        | LetRec of 'a fundef * 'a term * ('a [@hash.ignore])
+        | App of 'a term * 'a term list * ('a [@hash.ignore])
+        | Tuple of 'a term list * ('a [@hash.ignore])
+        | LetTuple of string list * 'a term * 'a term * ('a [@hash.ignore])
+        | Array of 'a term * 'a term * ('a [@hash.ignore])
+        | Get of 'a term * 'a term * ('a [@hash.ignore])
+        | Put of 'a term * 'a term * 'a term * 'a [@@deriving hash]
     and 'a fundef = { name : string * res; args : (string * res) list; body : 'a term }
     and res =
         | TUnit
@@ -35,7 +35,8 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | TFun of res list * res (* arguments are uncurried *)
         | TTuple of res list
         | TArray of res
-    and context = res FunContext.t
+
+    type context = res FunContext.t
 
 
     (* ============================================================================================================== *)
@@ -83,7 +84,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
             | Tuple(es, annot)      	    -> Format.fprintf ppf "@[<2>Tuple(";
                                             list_syntax_ppf ppf_tree ppf es;
                                             Format.fprintf ppf "){%a}@]" ppf_annot annot
-            | LetTuple(bs, e1, e2, annot) -> Format.fprintf ppf "@[<2>LetTuple(%s,%a,@,%a){%a}@]" (String.concat " " bs)
+            | LetTuple(bs, e1, e2, annot) -> Format.fprintf ppf "@[<2>LetTuple(%s,%a,@,%a){%a}@]" (String.concat ~sep:" " bs)
                                             ppf_tree e1 ppf_tree e2 ppf_annot annot
 
         and list_syntax_ppf syntax_ppf ppf es =
@@ -95,14 +96,14 @@ module FunSpecification (* : LanguageSpecification *) = struct
         Format.fprintf ppf "),@,%a)@]"  syntax_ppf e
 
         and list_binding_ppf ppf bs = if List.length bs > 0 then
-            let (id, t) = List.hd bs in
-            Format.fprintf ppf "%s : %a" id type_ppf t;
-            List.iter (fun (id, t) -> Format.fprintf ppf ", %s : %a" id type_ppf t) (List.tl bs);
+            let (id, t) = List.hd_exn bs in
+                Format.fprintf ppf "%s : %a" id type_ppf t;
+                List.iter (List.tl_exn bs) ~f:(fun (id, t) -> Format.fprintf ppf ", %s : %a" id type_ppf t)
         else
             ()
         in
-        ppf_term ppf_annot Format.str_formatter e;
-        Format.flush_str_formatter ()
+            ppf_term ppf_annot Format.str_formatter e;
+            Format.flush_str_formatter ()
 
 
     (* Use the pretty printer to extract string from a type *)
@@ -112,7 +113,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
     let string_of_context (gamma : context) =
         let context_ppf ppf gamma =
             Format.fprintf ppf "[";
-            (FunContext.iter (fun id res -> Format.fprintf ppf ", %s |> %a" id type_ppf res) gamma);
+            (FunContext.iteri gamma ~f:(fun ~key ~data -> Format.fprintf ppf ", %s |> %a" key type_ppf data));
             Format.fprintf ppf "]";
         in Format.fprintf Format.str_formatter "%a" context_ppf gamma; Format.flush_str_formatter ()
 
@@ -167,36 +168,44 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | _ -> failwith (Printf.sprintf "Wrong parameter list: %s." (string_of_term (fun _ _ -> ()) t))
 
 
-    let compute_fv e =
-        let rec free_variables_cps e k =
-            let invRemove e s = VarSet.remove s e in
-            match e with
-                | Unit(_)
-                | Bool(_)
-                | Int(_)
-                | Float(_) -> k VarSet.empty
-                | Var(x, _) -> k (VarSet.singleton x)
-                | Not(e1, _)
-                | Neg(e1, _)
-                | FNeg(e1, _) -> free_variables_cps e1 (fun r1 -> k r1)
-                | IBop(_, e1, e2, _)
-                | FBop(_, e1, e2, _)
-                | Rel(_, e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (VarSet.union r1 r2)))
-                | If(e1, e2, e3, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> free_variables_cps e3 (fun r3 -> k (VarSet.union r1 (VarSet.union r2 r3)))))
-                | Let(x, e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (VarSet.remove x (VarSet.union r1 r2))))
-                | LetRec ({ name = (x, _); args = yts; body = e1 }, e2, _) ->
-                free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (List.fold_left invRemove (VarSet.union r1 r2) (x::(List.map fst yts)))))
-                | App (e1, es, _) -> free_variables_cps e1 (fun r1 -> k (VarSet.union r1 (List.fold_left VarSet.union VarSet.empty (List.map (fun e -> free_variables_cps e k) es))))
-                | Tuple(es, _) -> k (List.fold_left VarSet.union VarSet.empty (List.map (fun e -> free_variables_cps e k) es))
-                | LetTuple(xs, e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (List.fold_left invRemove (VarSet.union r1 r2)xs)))
-                | Array(e1, e2, _)
-                | Get (e1, e2, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> k (VarSet.union r1 r2)))
-                | Put (e1, e2, e3, _) -> free_variables_cps e1 (fun r1 -> free_variables_cps e2 (fun r2 -> free_variables_cps e3 (fun r3 -> k (VarSet.union r1 (VarSet.union r2 r3)))))
-        in free_variables_cps e (fun d -> d)
+    let rec compute_fv e =
+        match e with
+            | Unit(_)
+            | Bool(_)
+            | Int(_)
+            | Float(_) ->
+                VarSet.empty
+            | Var(x, _) ->
+                VarSet.singleton x
+            | Not(e1, _)
+            | Neg(e1, _)
+            | FNeg(e1, _) ->
+                compute_fv e1
+            | IBop(_, e1, e2, _)
+            | FBop(_, e1, e2, _)
+            | Rel(_, e1, e2, _) ->
+                VarSet.union (compute_fv e1) (compute_fv e2)
+            | If(e1, e2, e3, _) ->
+                VarSet.union (compute_fv e3) (VarSet.union (compute_fv e1) (compute_fv e2))
+            | Let(x, e1, e2, _) ->
+                VarSet.remove (VarSet.union (compute_fv e1) (compute_fv e2)) x
+            | LetRec ({ name = (x, _); args = yts; body = e1 }, e2, _) ->
+                List.fold_left (x::(List.map yts ~f:fst)) ~init:(VarSet.union (compute_fv e1) (compute_fv e2)) ~f:VarSet.remove
+            | App (e1, es, _) ->
+                VarSet.union (compute_fv e1) (List.fold_left (List.map es ~f:compute_fv) ~init:VarSet.empty ~f:VarSet.union)
+            | Tuple(es, _) -> List.fold_left ~init:VarSet.empty (List.map es ~f:compute_fv) ~f:VarSet.union
+            | LetTuple(xs, e1, e2, _) ->
+                List.fold_left xs ~init:(VarSet.union (compute_fv e1) (compute_fv e2)) ~f:VarSet.remove
+            | Array(e1, e2, _)
+            | Get (e1, e2, _) ->
+                VarSet.union (compute_fv e1) (compute_fv e2)
+            | Put (e1, e2, e3, _) ->
+                VarSet.union (compute_fv e3) (VarSet.union (compute_fv e1) (compute_fv e2))
 
 
-    let rec compute_hash e = Hashtbl.hash e
+    let compute_hash = [%hash: (unit term)]
     (* let rec compute_hash e = Hashtbl.hash_param max_int max_int e *)
+
 
     let get_sorted_children e =
         match e with
@@ -214,9 +223,10 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | If(b, e1, e2, _) -> [(0, b); (1, e1); (2, e2)]
         | Let(s, e1, e2, _) -> [(0, e1); (1, e2)]
         | LetRec({name=(id, rt); args=xs; body=e1}, e2, _) -> [(0, e1); (1, e2)]
-        | App(e, es, _) -> let len = List.length es in
-            (0, e)::(List.combine (List.of_enum (1--len)) es)
-        | Tuple(es, _) -> (List.combine (List.of_enum (0--^List.length es)) es)
+        | App(e, es, _) -> let len_plus_one = 1 + List.length es in
+            (0, e)::(List.zip_exn (List.range 1 len_plus_one) es)
+        | Tuple(es, _) ->
+            (List.zip_exn (List.range 0 (List.length es)) es)
         | LetTuple(pat, e1, e2, _) -> [(0, e1); (1, e2)]
         | Array(e1, e2, _)
         | Get(e1, e2, _) -> [(0, e1); (1, e2)]
@@ -225,7 +235,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
     let compat gamma gamma' at =
         (* Straightorward implementation from the theory: *)
         let fv = snd (term_getannot at) in
-            VarSet.for_all (fun v -> (FunContext.find_option gamma v) = (FunContext.find_option gamma' v)) fv
+            VarSet.for_all fv ~f:(fun v -> (FunContext.find gamma v) = (FunContext.find gamma' v))
 
     (* i indicates that the i-th element is being processed (0-based) *)
     let tr (i : int) (ti : (int * VarSet.t) term) (t : (int * VarSet.t) term) (gamma : context) (rs : res list) : context =
@@ -247,11 +257,11 @@ module FunSpecification (* : LanguageSpecification *) = struct
             begin
                 match i with
                 | 0 -> gamma
-                | 1 -> (FunContext.add x (List.at rs 0) gamma)
+                | 1 -> (FunContext.add x (List.nth_exn rs 0) gamma)
                 | _ -> failwith "Wrong index for Tr in Let!"
             end
         | LetRec({name=(x, t); args=yts; body=e1}, e2, _) ->
-            let gamma' = (FunContext.add x (TFun(List.map snd yts, t)) gamma) in
+            let gamma' = (FunContext.add x (TFun(List.map yts ~f:snd, t)) gamma) in
             begin
                 match i with
                 | 0 -> FunContext.add_list yts gamma'
@@ -264,7 +274,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
             begin
                 match i with
                 | 0 -> gamma
-                | 1 -> (match (List.at rs 0) with
+                | 1 -> (match (List.nth_exn rs 0) with
                         | TTuple(ts) -> FunContext.add_list2 xs ts gamma
                         | _ -> failwith "Wrong type of e1 in LetTuple.")
                 | _ -> failwith "Wrong index for Tr in Let!"
@@ -285,59 +295,59 @@ module FunSpecification (* : LanguageSpecification *) = struct
                     | Some t -> Some (TArray t)
                     | None -> None)
                 | (TTuple(ts1), TTuple(ts2)) ->
-                    let args = List.map (fun (a, b) -> check a b) (List.combine ts1 ts2) in
-                    if List.mem None args then None
-                    else Some (TTuple (List.map (fun (Some t) -> t) args))
+                    let args = List.map (List.zip_exn ts1 ts2) ~f:(fun (a, b) -> check a b) in
+                    if List.mem args None ~equal:(=) then None
+                    else Some (TTuple (List.map args ~f:(fun (Some t) -> t)))
                 | (TFun(ts1, tr1),TFun(ts2, tr2)) ->
-                    let args = List.map (fun (a, b) -> check a b) (List.combine ts1 ts2) in
+                    let args = List.map2_exn ts1 ts2 ~f:(fun a b -> check a b) in
                     let trs = check tr1 tr2 in
-                    if List.mem None args then None
+                    if List.mem args None ~equal:(=) then None
                     else
                         (match trs with
                         | None -> None
-                        | Some t -> Some (TFun (List.map (fun (Some t) -> t) args, t)))
+                        | Some t -> Some (TFun (List.map args ~f:(fun (Some t) -> t), t)))
                 | _ -> None in
         match t with
         | Unit(_) -> Some TUnit
         | Bool(_, _) -> Some TBool
         | Int(_, _) -> Some TInt
         | Float(_, _) -> Some TFloat
-        | Var(x, _) -> FunContext.find_option gamma x
-        | Not(e1, _) -> check (List.at rs 0) TBool
-        | Neg(e1, _) -> check (List.at rs 0) TInt
-        | FNeg(e1, _) -> check (List.at rs 0) TFloat
-        | IBop(_, e1, e2, _) -> (match (check (List.at rs 0) TInt, check (List.at rs 1) TInt) with
+        | Var(x, _) -> FunContext.find gamma x
+        | Not(e1, _) -> check (List.nth_exn rs 0) TBool
+        | Neg(e1, _) -> check (List.nth_exn rs 0) TInt
+        | FNeg(e1, _) -> check (List.nth_exn rs 0) TFloat
+        | IBop(_, e1, e2, _) -> (match (check (List.nth_exn rs 0) TInt, check (List.nth_exn rs 1) TInt) with
             | (Some _, Some _) -> Some TInt
             | _ -> None)
-        | FBop(_, e1, e2, _) -> (match (check (List.at rs 0) TFloat, check (List.at rs 1) TFloat) with
+        | FBop(_, e1, e2, _) -> (match (check (List.nth_exn rs 0) TFloat, check (List.nth_exn rs 1) TFloat) with
             | (Some _, Some _) -> Some TFloat
             | _ -> None)
-        | Rel(_, _, _, _) -> (match (check (List.at rs 0) (List.at rs 1)) with
+        | Rel(_, _, _, _) -> (match (check (List.nth_exn rs 0) (List.nth_exn rs 1)) with
             | Some _ -> Some TBool
             | _ -> None)
         | If(_, _, _, _) ->
-            (match (check (List.at rs 0) TBool, check (List.at rs 1) (List.at rs 2)) with
+            (match (check (List.nth_exn rs 0) TBool, check (List.nth_exn rs 1) (List.nth_exn rs 2)) with
             | (Some _, t) -> t
             | _ -> None)
-        | Let(x, e1, e2, _) -> Some (List.at rs 1)
-        | LetRec({name=(x, t); args=yts; body=e1}, e2, _) -> Some (List.at rs 1)
+        | Let(x, e1, e2, _) -> Some (List.nth_exn rs 1)
+        | LetRec({name=(x, t); args=yts; body=e1}, e2, _) -> Some (List.nth_exn rs 1)
         | App(e, es, _) ->
             (
-                let ([te], tes) = List.split_at 1 rs in
+                let ([te], tes) = List.split_n rs 1 in
                 let (TFun(ts, tr) as t) = te in
                     match check t (TFun (tes , tr)) with
                     | None -> None
                     | Some _ -> Some tr
             )
         | Tuple(es, _) -> Some (TTuple rs) (* [ (es_0, 0), (es_1, 1), ..., (es_(len-1), len-1)] *)
-        | LetTuple(xs, e1, e2, _) -> Some (List.at rs 1)
-        | Array(_, _, _) -> (match check (List.at rs 0) TInt with
+        | LetTuple(xs, e1, e2, _) -> Some (List.nth_exn rs 1)
+        | Array(_, _, _) -> (match check (List.nth_exn rs 0) TInt with
             | None -> None
-            | Some t -> Some (TArray (List.at rs 1)))
-        | Get (_, _, _) -> (match (List.at rs 0, check TInt (List.at rs 1)) with
+            | Some t -> Some (TArray (List.nth_exn rs 1)))
+        | Get (_, _, _) -> (match (List.nth_exn rs 0, check TInt (List.nth_exn rs 1)) with
             | (TArray te1, Some te2) -> Some te1
             | _ -> None)
-        | Put (_, _, _, _) -> (match (check TInt (List.at rs 1), check (TArray(List.at rs 2)) (List.at rs 0)) with
+        | Put (_, _, _, _) -> (match (check TInt (List.nth_exn rs 1), check (TArray(List.nth_exn rs 2)) (List.nth_exn rs 0)) with
             | (Some te2, Some te3) -> Some TUnit
             | _ -> None)
 end

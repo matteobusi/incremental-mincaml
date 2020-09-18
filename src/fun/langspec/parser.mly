@@ -6,7 +6,7 @@ Improvements/fixes:
     - English comments
     - Better errors
 *)
-open Batteries
+open Core
 open FunSpecification.FunSpecification
 
 %}
@@ -254,7 +254,7 @@ types:
       if List.length $2 > 1 then
       	 TTuple($2)
       else
-         List.hd $2
+         List.hd_exn $2
     }
  | ltypes ARROW types
     {

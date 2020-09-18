@@ -1,4 +1,4 @@
-open Batteries
+open Core
 open OUnit2
 
 module OriginalFunAlgorithm = Original.TypeAlgorithm(FunSpecification.FunSpecification)
@@ -33,8 +33,8 @@ let rec nodecount e = match e with
   | If(e1, e2, e3, annot) -> 1 + nodecount e1 + nodecount e2 + nodecount e3
   | Let(_, e1, e2, annot) -> 2 + nodecount e1 + nodecount e2 (* curr node + x *)
   | LetRec ({ name = _; args = yts; body = e1 }, e2, annot) -> 2 + (List.length yts) + nodecount e1 + nodecount e2
-  | App (e1, es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount (e1::es)))
-  | Tuple(es, annot) -> 1 + (List.fold_left (+) 0 (List.map nodecount es))
+  | App (e1, es, annot) -> 1 + (List.fold_left ~f:(+) ~init:0 (List.map ~f:nodecount (e1::es)))
+  | Tuple(es, annot) -> 1 + (List.fold_left ~f:(+) ~init:0 (List.map ~f:nodecount es))
   | LetTuple(xs, e1, e2, annot) -> 1 + List.length xs + nodecount e1 + nodecount e2
   | Array(e1, e2, annot)
   | Get (e1, e2, annot) -> nodecount e1 + nodecount e2
@@ -55,8 +55,8 @@ let rec build_annot_list te = match te with
   | If(e1, e2, e3, annot) -> annot :: List.append (build_annot_list e1) (List.append (build_annot_list e2) (build_annot_list e3))
   | Let(_, e1, e2, annot)
   | LetRec ({ name = _; args = _; body = e1 }, e2, annot) -> annot :: List.append (build_annot_list e1) (build_annot_list e2)
-  | App (e1, es, annot) -> annot :: List.concat (List.map build_annot_list (e1::es))
-  | Tuple(es, annot) -> annot :: List.concat (List.map build_annot_list es)
+  | App (e1, es, annot) -> annot :: List.concat (List.map ~f:build_annot_list (e1::es))
+  | Tuple(es, annot) -> annot :: List.concat (List.map ~f:build_annot_list es)
   | LetTuple(_, e1, e2, annot)
   | Array(e1, e2, annot)
   | Get (e1, e2, annot) -> annot :: List.append (build_annot_list e1) (build_annot_list e2)
@@ -69,7 +69,7 @@ let inc_analyze_expr (file : string) =
   let e_hf = (Id.counter := 0; OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) e) in
   let gamma_init = FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ()) in
   let te = OriginalFunAlgorithm.typing gamma_init e_hf in
-  let cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
+  let cache = IncrementalFunAlgorithm.get_empty_cache () in
   let aast = IncrementalFunAlgorithm.build_cache e_hf gamma_init cache in
     (te, aast, cache)
 
@@ -84,7 +84,7 @@ let analyze_and_report (file : string) (filem : string) =
   let em_hf = (Id.counter := 0; OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) em) in
   let gamma_init = FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ()) in
   let te, tem = OriginalFunAlgorithm.typing gamma_init e_hf, OriginalFunAlgorithm.typing gamma_init em_hf in (* tem computed just to compare the results! *)
-  let cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
+  let cache = IncrementalFunAlgorithm.get_empty_cache () in
   ignore (IncrementalFunAlgorithm.build_cache e_hf gamma_init cache);
   IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
   IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount em_hf) IncrementalFunAlgorithm.report;
@@ -96,15 +96,15 @@ let check_cache_result file =
   let (te, aast, cache) = inc_analyze_expr file in
   let annot_list = build_annot_list aast in
   assert_bool ("[Cache] BuildCache wrong type at root: " ^ file) (te = fst (term_getannot aast));
-  assert_bool ("[Cache] Failed: " ^ file) ((List.for_all (fun (tau, (hash, fv)) -> (snd (IncrementalFunAlgorithm.Cache.find cache hash)) = tau) annot_list))
+  assert_bool ("[Cache] Failed: " ^ file) ((List.for_all ~f:(fun (tau, (hash, fv)) -> (snd (IncrementalFunAlgorithm.Cache.find_exn cache hash)) = tau) annot_list))
 
 let run fv_c depth =
   (* Fill up the initial gamma with needed identifiers *)
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
-  let initial_gamma_list e = List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e)) in
+  let initial_gamma_list e = List.map ~f:(fun id -> (id, TInt)) (VarSet.elements (compute_fv e)) in
   let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
   (* These are just to avoid multiple recomputations *)
-  let full_cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
+  let full_cache = IncrementalFunAlgorithm.get_empty_cache () in
   ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
   IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
   IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount e) IncrementalFunAlgorithm.report;
@@ -114,9 +114,9 @@ let run fv_c depth =
 let run_mod fv_c depth inv_depth =
   (* Fill up the initial gamma with needed identifiers *)
   let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
-  let initial_gamma_list e = (List.map (fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
+  let initial_gamma_list e = (List.map ~f:(fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
   let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
-  let full_cache = IncrementalFunAlgorithm.get_empty_cache 4096 in
+  let full_cache = IncrementalFunAlgorithm.get_empty_cache () in
   (* Build the full cache for e *)
   ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
   (* Invalidate part of the cache, corresponding to the rightmost subtree of depth tree_depth - d; This simulates diffs. *)

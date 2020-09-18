@@ -4,8 +4,8 @@ module type LanguageSpecification = sig
 
     val term_getannot : 'a term -> 'a
     val term_edit : 'a term -> ('b term) list -> 'b -> 'b term
-    val compute_fv : 'a term -> VarSet.t
-    val compute_hash : 'a term -> int
+    val compute_fv : unit term -> VarSet.t
+    val compute_hash : unit term -> int
     val get_sorted_children : 'a term -> (int * 'a term) list
 
     (* Then, the basic ingredients for the typing *)

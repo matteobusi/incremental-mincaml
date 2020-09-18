@@ -1,16 +1,15 @@
-open Batteries
+open Core
 
 include Hashtbl.Make
 (struct
     type t = string
-    let compare = String.compare
-    let hash = Hashtbl.hash
-    (* let hash = Hashtbl.hash_param max_int max_int *)
-    let equal = String.equal
+    [@@deriving compare, sexp, hash]
 end)
 
-let get_empty_context () = create 4096
+let get_empty_context () = create ()
 
-let add x t env = let envc = copy env in add envc x t; envc
-let add_list xys env = List.fold_left (fun env (x, y) -> add x y env) env xys
-let add_list2 xs ys env = List.fold_left2 (fun env x y -> add x y env) env xs ys
+let add x t env = let envc = copy env in ignore (add envc x t); envc
+let add_list xys env = List.fold_left xys ~init:env ~f:(fun env (x, y) -> add x y env)
+let add_list2 xs ys env = add_list (List.zip_exn xs ys) env
+
+[@@deriving compare, sexp, hash]
