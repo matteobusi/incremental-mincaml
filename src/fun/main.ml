@@ -202,7 +202,7 @@ let analyze_expr (file : string) (filem : string) =
     let te = OriginalFunAlgorithm.typing gamma_init e_hf in
     Printf.printf "... done\n"; flush stdout;
     Printf.printf "Incremental typing "; flush stdout;
-    let tem = IncrementalFunAlgorithm.typing_report cache gamma_initm em_hf in
+    let tem = IncrementalFunAlgorithm.typing_w_report cache gamma_initm em_hf in
       Printf.printf "... done\n"; flush stdout;
       Printf.printf "Type: %s - IType: %s\n" (FunSpecification.FunSpecification.string_of_type te) (FunSpecification.FunSpecification.string_of_type tem);
       Printf.printf "%s\n" (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report);

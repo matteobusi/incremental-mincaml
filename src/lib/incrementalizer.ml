@@ -68,7 +68,7 @@ struct
                 Printf.printf "context: %s \n\n" (L.string_of_context gamma);
                 failwith "(incrementalizer.ml, l.43) buildcache: CheckJoin failed!"
             | Some r -> L.term_edit t ats (r, L.term_getannot t)) in
-        let rec _build_cache (t : (L.res * (int * VarSet.t)) L.term) (t_hf : (int * VarSet.t) L.term) gamma cache =
+        let rec _build_cache (t : (L.res * (int * VarSet.t)) L.term) (t_hf : (int * VarSet.t) L.term) gamma  (cache : (L.context ref * L.res) Cache.t) =
             let (res, (hash, fvs)) = L.term_getannot t in
             let ts = (L.get_sorted_children t) in
             let ts_hf = (L.get_sorted_children t_hf) in
@@ -84,7 +84,7 @@ struct
             | None -> None (* This is a miss, w/o any corresponding element in cache *)
             | Some (gamma', res') ->
                 (* TODO: possible optimization: check whether gamma and gamma' refer to the same location -- this requires changing cache update implementation *)
-                if L.compat gamma !gamma' t then
+                if L.compat !gamma !gamma' t then
                     Some res' (* This is a hit! *)
                 else
                     None
@@ -96,7 +96,7 @@ struct
                 (let r = OriginalFunAlgorithm.typing gamma t in
                     Cache.set cache hash (ref gamma, r); r)
             | _ -> (* This is the inductive case, either a hit or a miss *)
-                (match miss cache hash gamma with
+                (match miss cache hash (ref gamma) with
                 | None -> (* This is a miss *)
                     (
                     (* Here's the difference w. paper:
@@ -110,14 +110,14 @@ struct
                         | Some res -> Cache.set cache hash (ref gamma, res); res))
                 | Some res -> res)
 
-    let typing_report (cache : (L.context ref * L.res) Cache.t) gamma t =
+    let typing_w_report (cache : (L.context ref * L.res) Cache.t) gamma t =
         let rec _typing (cache : (L.context ref * L.res) Cache.t) gamma (t : (int * VarSet.t) L.term) (at : (IncrementalReport.node_visit_type ref) L.term) =
             let miss (cache : (L.context ref * L.res) Cache.t) hash gamma =
                 (match Cache.find cache hash with
                 | None ->
                     IncrementalReport.register_miss_none report; None (* This is a miss, w/o any corresponding element in cache *)
                 | Some (gamma', res') ->
-                    if L.compat gamma !gamma' t then
+                    if L.compat !gamma !gamma' t then
                         (IncrementalReport.register_hit report; Some res') (* This is a hit! *)
                     else
                         (IncrementalReport.register_miss_incomp report; None)) in
@@ -130,7 +130,7 @@ struct
                         (L.term_getannot at) := IncrementalReport.Orig;
                         Cache.set cache hash (ref gamma, r); r)
                 | _ -> (* This is the inductive case, either a hit or a miss *)
-                    (match miss cache hash gamma with
+                    (match miss cache hash (ref gamma) with
                     | None -> (* This is a miss *)
                         (
                         (* Here's the difference w. paper:

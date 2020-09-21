@@ -1,4 +1,4 @@
-S src/fun/*
+S src/fun/
 S src/fun/examples
 S src/fun/langspec
 S src/fun/tests
@@ -13,9 +13,11 @@ PKG ppx_sexp_conv
 PKG ounit2
 PKG landmarks
 PKG ocamlgraph
+PKG ppx_fields_conv
 
-B _build/*
+B _build/
 B _build/src/fun
 B _build/src/fun/examples
 B _build/src/fun/langspec
+B _build/src/fun/tests
 B _build/src/lib

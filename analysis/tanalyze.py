@@ -26,8 +26,8 @@ rcParams.update({'figure.autolayout': True})
 
 def tabulate(res, interesting_pairs):
     for (depth, fvc) in interesting_pairs:
-        id_res_orig = res[(res["name"].str.startswith(orig_n)) & (res["depth"] == depth) & (res["fvc"] == fvc)].drop(["inv_depth", "name", "fvc"], axis=1).groupby("depth").mean().reset_index()
-        id_res_einc = res[(res["name"].str.startswith(einc_n)) & (res["depth"] == depth) & (res["fvc"] == fvc)].drop(["inv_depth", "name", "fvc"], axis=1).groupby("depth").mean().reset_index()
+        id_res_orig = res[(res["name"].str.startswith(orig_n)) & (res["nodecount"] == depth) & (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc"], axis=1).groupby("nodecount").mean().reset_index()
+        id_res_einc = res[(res["name"].str.startswith(einc_n)) & (res["nodecount"] == depth) & (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc"], axis=1).groupby("nodecount").mean().reset_index()
 
         if len(id_res_orig.index) == 1:
             orig_r, einc_r = id_res_orig.iloc[0]["rate"], id_res_einc.iloc[0]["rate"]
@@ -38,23 +38,17 @@ def tabulate(res, interesting_pairs):
                 print("${}$ & $2^{{{}}}$ & ${:.2f}$ & ${:.2f}$ & ${:.2f}$\\\\".format(depth, fvc.bit_length() - 1, orig_r, einc_r, ratio))
 
 def plot_on_pdf (filename, res):
-    for depth in res["depth"].unique():
-        res_2 = res[res["depth"] == depth]
+    for depth in res["nodecount"].unique():
+        res_2 = res[res["nodecount"] == depth]
         for fvc in res_2["fvc"].unique():
             res_3 = res_2[res_2["fvc"] == fvc]
             with PdfPages(filename.format(depth, fvc)) as pdf:
                 fig, ax = plt.subplots()
-                add_res_orig = res_3[res_3["name"].str.startswith(orig_n)].drop(["name", "depth", "fvc"], axis=1).groupby(["inv_depth"]).mean().reset_index()
-                add_res_inc  = res_3[res_3["name"].str.startswith(inc_n)].drop(["name", "depth", "fvc"], axis=1).groupby(["inv_depth"]).mean().reset_index()
+                add_res_orig = res_3[res_3["name"].str.startswith(orig_n)].drop(["name", "nodecount", "fvc"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
+                add_res_inc  = res_3[res_3["name"].str.startswith(inc_n)].drop(["name", "nodecount", "fvc"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
 
-                add_res_orig["diffsz"] = (2 ** (depth - add_res_orig["inv_depth"])) + add_res_orig["inv_depth"]
-                add_res_inc["diffsz"] = (2 ** (depth - add_res_inc["inv_depth"])) + add_res_inc["inv_depth"]
-
-                # add_res_orig["diffsz"] = add_res_orig["inv_depth"]
-                # add_res_inc["diffsz"] = add_res_inc["inv_depth"]
-
-                add_res_orig = add_res_orig.drop(["inv_depth"], axis=1)
-                add_res_inc = add_res_inc.drop(["inv_depth"], axis=1)
+                add_res_orig = add_res_orig.drop(["invalidation_parameter"], axis=1)
+                add_res_inc = add_res_inc.drop(["invalidation_parameter"], axis=1)
 
                 add_res_orig.plot(x="diffsz", y="rate", ax=ax, label=orig_n, marker='d', color='violet', linewidth=2, linestyle='dashed') # BLUE
                 add_res_inc.plot(x="diffsz", y="rate", ax=ax, label=inc_n, marker='o', color='orange', linewidth=2) # ORANGE
@@ -85,11 +79,11 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         print(("Usage: {} input_file.csv dest_path\n").format(sys.argv[0]))
     else:
-        res = pandas.read_csv(sys.argv[1], sep=", ", engine="python", dtype={'fvc':int, 'depth':int, 'inv_depth':int, 'rate':float})
+        res = pandas.read_csv(sys.argv[1], sep=", ", engine="python", dtype={'fvc':int, 'invalidation_parameter':int, 'nodecount':int, 'diffsz' : int, 'rate':float})
         #.drop(["repeat", "time"], axis=1)
 
         # Just plot for "big" enough trees
-        res = res[res["depth"] >= 8]
+        res = res[res["nodecount"] >= 2**8]
 
         # Create the directory
         os.makedirs("{}".format(sys.argv[2]), exist_ok=True)

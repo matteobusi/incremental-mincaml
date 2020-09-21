@@ -12,19 +12,22 @@ default: $(TARGET).native
 %.byte:
 	ocamlbuild  -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ocamlgraph $@
 
-test: default
+unittest: default
 	ocamlbuild  -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ounit2,ocamlgraph $@.native
 
 texperiments:
-	ocamlbuild -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ocamlgraph,core_bench texperiments.native
+	ocamlbuild -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ppx_fields_conv,ocamlgraph,core_bench texperiments.native
 
 mexperiments:
 	ocamlbuild  -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,landmarks,ocamlgraph mexperiments.native
 
 dexperiments:
-	ocamlbuild -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,core_bench dexperiments.native
+	ocamlbuild -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ppx_fields_conv,core_bench dexperiments.native
 
-all: default test mexperiments texperiments dexperiments
+experiments:
+	ocamlbuild -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ppx_fields_conv,core_bench experiments.native
+
+all: default unittest mexperiments texperiments dexperiments
 
 clean:
 	ocamlbuild -clean
