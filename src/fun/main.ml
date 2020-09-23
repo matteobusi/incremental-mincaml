@@ -196,13 +196,13 @@ let analyze_expr (file : string) (filem : string) =
     let cache = IncrementalFunAlgorithm.get_empty_cache () in
     ignore (IncrementalFunAlgorithm.build_cache e_hf gamma_init cache);
     Printf.printf "... done\n"; flush stdout;
-    IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
-    IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount em_hf) IncrementalFunAlgorithm.report;
+    (* IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
+    IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount em_hf) IncrementalFunAlgorithm.report; *)
     Printf.printf "Original typing "; flush stdout;
     let te = OriginalFunAlgorithm.typing gamma_init e_hf in
     Printf.printf "... done\n"; flush stdout;
     Printf.printf "Incremental typing "; flush stdout;
-    let tem = IncrementalFunAlgorithm.typing_w_report cache gamma_initm em_hf in
+    let tem = IncrementalFunAlgorithm.typing_w_report (nodecount em_hf) cache gamma_initm em_hf in
       Printf.printf "... done\n"; flush stdout;
       Printf.printf "Type: %s - IType: %s\n" (FunSpecification.FunSpecification.string_of_type te) (FunSpecification.FunSpecification.string_of_type tem);
       Printf.printf "%s\n" (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report);

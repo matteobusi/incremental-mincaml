@@ -58,17 +58,17 @@ def plot_on_pdf (filename, res):
                 add_res_inc.plot(x="invalidation_parameter", y="rate", ax=ax, label=inc_n, marker='o', color='orange', linewidth=2) # ORANGE
 
                 ymax = max (
-                [
-                    max(add_res_orig["rate"]),
-                    max(add_res_inc["rate"]),
-                ]
+                    [
+                        max(add_res_orig["rate"]),
+                        max(add_res_inc["rate"]),
+                    ]
                 )
 
                 ymin = max ([ 0, min (
-                [
-                    min(add_res_orig["rate"]),
-                    min(add_res_inc["rate"]),
-                ]
+                    [
+                        min(add_res_orig["rate"]),
+                        min(add_res_inc["rate"]),
+                    ]
                 ) - 1])
 
                 plt.yticks(np.arange(ymin, ymax + 1, (ymax-ymin+1)/10))

@@ -86,9 +86,9 @@ let analyze_and_report (file : string) (filem : string) =
   let te, tem = OriginalFunAlgorithm.typing gamma_init e_hf, OriginalFunAlgorithm.typing gamma_init em_hf in (* tem computed just to compare the results! *)
   let cache = IncrementalFunAlgorithm.get_empty_cache () in
   ignore (IncrementalFunAlgorithm.build_cache e_hf gamma_init cache);
-  IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
-  IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount em_hf) IncrementalFunAlgorithm.report;
-  let inctem = IncrementalFunAlgorithm.typing_w_report cache gamma_init em_hf in (*Analyse the modified program *)
+  (* IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
+  IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount em_hf) IncrementalFunAlgorithm.report; *)
+  let inctem = IncrementalFunAlgorithm.typing_w_report (nodecount e) cache gamma_init em_hf in (*Analyse the modified program *)
   Printf.printf "[%s v. %s] - %s\n" file filem (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report);
     (tem, inctem)
 
@@ -106,9 +106,9 @@ let run fv_c depth =
   (* These are just to avoid multiple recomputations *)
   let full_cache = IncrementalFunAlgorithm.get_empty_cache () in
   ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
-  IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
-  IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount e) IncrementalFunAlgorithm.report;
-  ignore (IncrementalFunAlgorithm.typing_w_report full_cache gamma_init e); (*Analyse the modified program *)
+  (* IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
+  IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount e) IncrementalFunAlgorithm.report; *)
+  ignore (IncrementalFunAlgorithm.typing_w_report (nodecount e) full_cache gamma_init e); (*Analyse the modified program *)
   Printf.printf "transf=id; fv_c=%d; depth=%d - %s\n\n" fv_c depth (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report)
 
 let run_mod fv_c depth inv_depth =
@@ -121,9 +121,9 @@ let run_mod fv_c depth inv_depth =
   ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
   (* Invalidate part of the cache, corresponding to the rightmost subtree of depth tree_depth - d; This simulates diffs. *)
   Generator.simulate_modification full_cache e inv_depth;
-  IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
-  IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount e) IncrementalFunAlgorithm.report;
-  ignore (IncrementalFunAlgorithm.typing_w_report full_cache gamma_init e); (*Analyse the modified program *)
+  (* IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
+  IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount e) IncrementalFunAlgorithm.report; *)
+  ignore (IncrementalFunAlgorithm.typing_w_report (nodecount e) full_cache gamma_init e); (*Analyse the modified program *)
   Printf.printf "transf=mod; fv_c=%d; depth=%d; inv_depth=%d - %s\n\n" fv_c depth inv_depth (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report)
 
 let check_incremental_result fileo filem = let res = analyze_and_report fileo filem in assert_equal (fst res) (snd res)

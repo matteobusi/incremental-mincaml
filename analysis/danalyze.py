@@ -26,8 +26,8 @@ rcParams.update({'figure.autolayout': True})
 
 def tabulate(res, interesting_pairs):
     for (num_fact, xi_invalidated) in interesting_pairs:
-        id_res_orig = res[(res["-44604263name"].str.startswith(orig_n)) & (res["nodecount"] == num_fact) & (res["invalidation_parameter"] == xi_invalidated)].drop(["invalidation_parameter", "-44604263name"], axis=1).groupby("nodecount").mean().reset_index()
-        id_res_einc = res[(res["-44604263name"].str.startswith(einc_n)) & (res["nodecount"] == num_fact) & (res["invalidation_parameter"] == xi_invalidated)].drop(["invalidation_parameter", "-44604263name"], axis=1).groupby("nodecount").mean().reset_index()
+        id_res_orig = res[(res["name"].str.startswith(orig_n)) & (res["nodecount"] == num_fact) & (res["invalidation_parameter"] == xi_invalidated)].drop(["invalidation_parameter", "name"], axis=1).groupby("nodecount").mean().reset_index()
+        id_res_einc = res[(res["name"].str.startswith(einc_n)) & (res["nodecount"] == num_fact) & (res["invalidation_parameter"] == xi_invalidated)].drop(["invalidation_parameter", "name"], axis=1).groupby("nodecount").mean().reset_index()
 
         if len(id_res_orig.index) == 1:
             orig_r, einc_r = id_res_orig.iloc[0]["rate"], id_res_einc.iloc[0]["rate"]
@@ -39,10 +39,10 @@ def plot_on_pdf (filename, res):
         res_2 = res[res["nodecount"] == num_fact]
         with PdfPages(filename.format(num_fact)) as pdf:
             fig, ax = plt.subplots()
-            add_res_orig = res_2[res_2["-44604263name"].str.startswith(orig_n)].drop(["-44604263name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
-            add_res_inc  = res_2[res_2["-44604263name"].str.startswith(inc_n)].drop(["-44604263name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
-            # add_res_setupinc = res_2[res_2["-44604263name"].str.startswith(setupinc_n)].drop(["-44604263name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
-            #add_res_setup = res_2[res_2["-44604263name"].str.startswith(setup_n)].drop(["-44604263name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            add_res_orig = res_2[res_2["name"].str.startswith(orig_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            add_res_inc  = res_2[res_2["name"].str.startswith(inc_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            # add_res_setupinc = res_2[res_2["name"].str.startswith(setupinc_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            #add_res_setup = res_2[res_2["name"].str.startswith(setup_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
 
             # add_res_inc_comp = add_res_inc.drop(["rate"], axis=1)
             # add_res_inc_comp["rate"] = 1.0/(1.0/add_res_setupinc["rate"] - 1.0/add_res_setup["rate"])

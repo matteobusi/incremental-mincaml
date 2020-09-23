@@ -26,7 +26,8 @@ module MinimalResult = struct
       invalidation_parameter : int;
       nodecount : int;
       diffsz : int;
-      rate : float
+      rate : float;
+      threshold : int
     }
 end
 
@@ -53,7 +54,7 @@ let rec nodecount e = match e with
   | Put (e1, e2, e3, annot) -> 1 + nodecount e1 + nodecount e2 + nodecount e3
 
 
-let extract_minimal (results : Core_bench.Simplified_benchmark.Results.t) nodecount diffsz fvc =
+let extract_minimal (results : Core_bench.Simplified_benchmark.Results.t) nodecount diffsz fvc threshold=
   let invalidation_parameter_of_name name =
     match String.split ~on:':' name with
     | [n] -> -1
@@ -68,7 +69,8 @@ let extract_minimal (results : Core_bench.Simplified_benchmark.Results.t) nodeco
       invalidation_parameter = invalidation_parameter_of_name r.full_benchmark_name;
       nodecount = nodecount;
       diffsz = diffsz;
-      rate = rate_of_time r.time_per_run_nanos
+      rate = rate_of_time r.time_per_run_nanos;
+      threshold = threshold
     }) in
   (List.map ~f:project results)
 
@@ -79,7 +81,14 @@ let measure ?(run_config=Run_config.create ()) tests =
   Sbenchmark.measure_all run_config basic_tests
 
 
-let throughput_original_vs_inc quota verbosity cache_invalidator invalidator_param fvc gamma_init e =
+let throughput_original_vs_inc quota verbosity ?(threshold=Int.max_value) (incremental_typing_fun :  ?threshold:Core.Int.t ->
+         (FunSpecification.FunSpecification.context Core.ref *
+          FunSpecification.FunSpecification.res)
+         IncrementalFunAlgorithm.Cache.t ->
+         FunSpecification.FunSpecification.context ->
+         ('a IncrementalFunAlgorithm.Cache.key_ * VarSet.t)
+         FunSpecification.FunSpecification.term ->
+         FunSpecification.FunSpecification.res) cache_invalidator invalidator_param fvc gamma_init e =
     let nc = Generator.nodecount e in
     (* Just compute the cache once: *)
     let experiment_cache = IncrementalFunAlgorithm.get_empty_cache () in
@@ -106,7 +115,7 @@ let throughput_original_vs_inc quota verbosity cache_invalidator invalidator_par
           (fun cache ->
             (* assert(oldsz - IncrementalFunAlgorithm.Cache.length cache = diffsz);
             Printf.eprintf "diff=%d\n" diffsz; flush stderr; *)
-            IncrementalFunAlgorithm.typing cache gamma_init e);
+            incremental_typing_fun ~threshold:threshold cache gamma_init e);
         ] in
       let results = List.map ~f:(fun m -> Analysis.analyze m Analysis_config.default) measures in
       let results = List.filter_map
@@ -115,12 +124,12 @@ let throughput_original_vs_inc quota verbosity cache_invalidator invalidator_par
           | Ok r -> Some r) results in
       (* Ugly hack, should use extract but it is not exposed by the interface! *)
       let results = Core_bench.Simplified_benchmark.Results.t_of_sexp (Core_bench.Simplified_benchmark.to_sexp results) in
-        extract_minimal results nc diffsz fvc
+        extract_minimal results nc diffsz fvc threshold
 
 
 let print_csv (mr_list : MinimalResult.t list) =
   List.iter
-  ~f:(fun (mr : MinimalResult.t) -> Printf.printf "%s, %d, %d, %d, %d, %f\n" mr.name mr.fvc mr.invalidation_parameter mr.nodecount mr.diffsz mr.rate; flush stdout) mr_list
+  ~f:(fun (mr : MinimalResult.t) -> Printf.printf "%s, %d, %d, %d, %d, %d, %f\n" mr.name mr.fvc mr.invalidation_parameter mr.nodecount mr.diffsz mr.threshold mr.rate; flush stdout) mr_list
 
 (* FIXME: duplicate from main.ml; Is there a common place to put this one into? *)
 let rec annotate_fv e =
