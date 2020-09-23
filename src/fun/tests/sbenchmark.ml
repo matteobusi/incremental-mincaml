@@ -19,6 +19,8 @@ let stabilize_gc () =
   in
   loop 10 0
 
+let iround_towards_zero_exn f = (let open Core.Float in iround_towards_zero_exn f)
+
 (* The main benchmarking function *)
 let measure =
   let module RC = Core_bench.Run_config  in
@@ -71,7 +73,7 @@ let measure =
       then Gc.set { (Gc.get ()) with Gc.Control.max_overhead = 1_000_000 };
 
       (* Setup here *)
-      let setup_res = setup () in
+      let setup_res = Array.init current_runs (fun i -> setup ()) in
 
       (* pre-run measurements *)
       let gc1 = Gc.quick_stat () in
@@ -79,8 +81,8 @@ let measure =
       let c1 = Time_stamp_counter.now () in
 
       (* MEASURE A SINGLE SAMPLE *)
-      for _ = 1 to current_runs do
-        ignore(f setup_res);
+      for i = 1 to current_runs do
+        ignore(f setup_res.(i-1));
       done;
       (* END OF MEASUREMENT *)
 
@@ -98,13 +100,13 @@ let measure =
       let s = results.(current_index) in
       s.M.runs  <- current_runs;
       s.M.cycles  <- Time_stamp_counter.Span.to_int_exn (Time_stamp_counter.diff c2 c1);
-      s.M.nanos  <- (Float.iround_towards_zero_exn
-                       (Time.Span.to_ns (Time.diff t2 t1)));
-      s.M.minor_allocated <- Float.iround_towards_zero_exn
-                               (gc2.Gc.Stat.minor_words -. gc1.Gc.Stat.minor_words);
-      s.M.major_allocated <- Float.iround_towards_zero_exn
-                               (gc2.Gc.Stat.major_words -. gc1.Gc.Stat.major_words);
-      s.M.promoted <- Float.iround_towards_zero_exn
+      s.M.nanos  <- (iround_towards_zero_exn
+                      (Time.Span.to_ns (Time.diff t2 t1)));
+      s.M.minor_allocated <- iround_towards_zero_exn
+                              (gc2.Gc.Stat.minor_words -. gc1.Gc.Stat.minor_words);
+      s.M.major_allocated <- iround_towards_zero_exn
+                              (gc2.Gc.Stat.major_words -. gc1.Gc.Stat.major_words);
+      s.M.promoted <- iround_towards_zero_exn
                         (gc2.Gc.Stat.promoted_words -. gc1.Gc.Stat.promoted_words);
       s.M.compactions <-
         (gc2.Gc.Stat.compactions - gc1.Gc.Stat.compactions);
@@ -112,6 +114,7 @@ let measure =
         (gc2.Gc.Stat.major_collections - gc1.Gc.Stat.major_collections);
       s.M.minor_collections <-
         (gc2.Gc.Stat.minor_collections - gc1.Gc.Stat.minor_collections);
+
       incr index;
 
       (* determine the next number of runs *)
@@ -120,9 +123,9 @@ let measure =
         | `Linear k -> current_runs + k
         | `Geometric scale ->
           let next_geometric =
-            Float.iround_towards_zero_exn ((Float.of_int current_runs) *. scale)
+            (iround_towards_zero_exn ((float_of_int current_runs) *. scale))
           in
-          Int.max next_geometric (current_runs + 1)
+            Int.max next_geometric (current_runs + 1)
       in
       (* if [next] would put us over the quota, we decrease as necessary *)
       let next = Int.min next (quota_max_count - !total_runs) in
@@ -172,7 +175,7 @@ let measure_all
         trials
     | Span span ->
       let est_time =
-        Time.Span.scale span (Float.of_int (List.length tests))
+        Time.Span.scale span (float_of_int (List.length tests))
       in
       Verbosity.print_low
         "Estimated testing time %s (%d benchmarks x %s). Change using '-quota'.\n%!"

@@ -30,7 +30,6 @@ module MinimalResult = struct
     }
 end
 
-
 let rec nodecount e = match e with
   | Unit(annot)
   | Bool(_, annot)
@@ -82,39 +81,41 @@ let measure ?(run_config=Run_config.create ()) tests =
 
 let throughput_original_vs_inc quota verbosity cache_invalidator invalidator_param fvc gamma_init e =
     let nc = Generator.nodecount e in
-    let diffsz = ref 0 in
-    let measures = measure
-      ~run_config:(Core_bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
-      [
-        Stest.create
-          ~name:(orig_n ^ ":" ^ (string_of_int invalidator_param))
-          (fun () -> IncrementalFunAlgorithm.get_empty_cache ())
-          (fun _ -> OriginalFunAlgorithm.typing gamma_init e);
-        (* Bench.Test.create ~name:finc_n
-          (let cache = IncrementalFunAlgorithm.get_empty_cache nc in
-              ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
-              fun () -> IncrementalFunAlgorithm.typing cache gamma_init e
-          );
-        Bench.Test.create ~name:einc_n
-          (fun () -> IncrementalFunAlgorithm.typing (IncrementalFunAlgorithm.get_empty_cache nc) gamma_init e); *)
-        Stest.create ~name:(inc_n ^ ":" ^ (string_of_int invalidator_param))
-        (fun () ->
-          let cache = IncrementalFunAlgorithm.get_empty_cache () in
-            ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
-            let oldsz = IncrementalFunAlgorithm.Cache.length cache in
-            cache_invalidator cache e invalidator_param;
-            diffsz := oldsz - IncrementalFunAlgorithm.Cache.length cache;
-            cache)
-        (fun cache -> IncrementalFunAlgorithm.typing cache gamma_init e);
-      ] in
-    let results = List.map ~f:(fun m -> Analysis.analyze m Analysis_config.default) measures in
-    let results = List.filter_map
-      ~f:(fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
-        | Error err -> Printf.eprintf "(dexperiments.ml:59) Warning: test omitted since %s.\n" (Core.Error.to_string_hum err); None
-        | Ok r -> Some r) results in
-    (* Ugly hack, should use extract but it is not exposed by the interface! *)
-    let results = Core_bench.Simplified_benchmark.Results.t_of_sexp (Core_bench.Simplified_benchmark.to_sexp results) in
-      extract_minimal results nc !diffsz fvc
+    (* Just compute the cache once: *)
+    let experiment_cache = IncrementalFunAlgorithm.get_empty_cache () in
+      ignore (IncrementalFunAlgorithm.build_cache e gamma_init experiment_cache);
+      let oldsz = IncrementalFunAlgorithm.Cache.length experiment_cache in
+      cache_invalidator experiment_cache e invalidator_param;
+      let diffsz = oldsz - IncrementalFunAlgorithm.Cache.length experiment_cache in
+      let measures = measure
+        ~run_config:(Core_bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
+        [
+          Stest.create
+            ~name:(orig_n ^ ":" ^ (string_of_int invalidator_param))
+            (fun () -> IncrementalFunAlgorithm.Cache.copy experiment_cache)
+            (fun _ -> OriginalFunAlgorithm.typing gamma_init e);
+          (* Bench.Test.create ~name:finc_n
+            (let cache = IncrementalFunAlgorithm.get_empty_cache nc in
+                ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
+                fun () -> IncrementalFunAlgorithm.typing cache gamma_init e
+            );
+          Bench.Test.create ~name:einc_n
+            (fun () -> IncrementalFunAlgorithm.typing (IncrementalFunAlgorithm.get_empty_cache nc) gamma_init e); *)
+          Stest.create ~name:(inc_n ^ ":" ^ (string_of_int invalidator_param))
+          (fun () -> IncrementalFunAlgorithm.Cache.copy experiment_cache)
+          (fun cache ->
+            (* assert(oldsz - IncrementalFunAlgorithm.Cache.length cache = diffsz);
+            Printf.eprintf "diff=%d\n" diffsz; flush stderr; *)
+            IncrementalFunAlgorithm.typing cache gamma_init e);
+        ] in
+      let results = List.map ~f:(fun m -> Analysis.analyze m Analysis_config.default) measures in
+      let results = List.filter_map
+        ~f:(fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
+          | Error err -> Printf.eprintf "(dexperiments.ml:59) Warning: test omitted since %s.\n" (Core.Error.to_string_hum err); None
+          | Ok r -> Some r) results in
+      (* Ugly hack, should use extract but it is not exposed by the interface! *)
+      let results = Core_bench.Simplified_benchmark.Results.t_of_sexp (Core_bench.Simplified_benchmark.to_sexp results) in
+        extract_minimal results nc diffsz fvc
 
 
 let print_csv (mr_list : MinimalResult.t list) =

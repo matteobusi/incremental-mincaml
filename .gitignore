@@ -10,3 +10,4 @@ examples/sum.ml
 *.csv
 *.json
 *.dot
+*.pdf

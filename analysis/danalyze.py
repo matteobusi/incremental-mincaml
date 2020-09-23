@@ -26,8 +26,8 @@ rcParams.update({'figure.autolayout': True})
 
 def tabulate(res, interesting_pairs):
     for (num_fact, xi_invalidated) in interesting_pairs:
-        id_res_orig = res[(res["name"].str.startswith(orig_n)) & (res["nodecount"] == num_fact) & (res["invalidation_parameter"] == xi_invalidated)].drop(["invalidation_parameter", "name"], axis=1).groupby("nodecount").mean().reset_index()
-        id_res_einc = res[(res["name"].str.startswith(einc_n)) & (res["nodecount"] == num_fact) & (res["invalidation_parameter"] == xi_invalidated)].drop(["invalidation_parameter", "name"], axis=1).groupby("nodecount").mean().reset_index()
+        id_res_orig = res[(res["-44604263name"].str.startswith(orig_n)) & (res["nodecount"] == num_fact) & (res["invalidation_parameter"] == xi_invalidated)].drop(["invalidation_parameter", "-44604263name"], axis=1).groupby("nodecount").mean().reset_index()
+        id_res_einc = res[(res["-44604263name"].str.startswith(einc_n)) & (res["nodecount"] == num_fact) & (res["invalidation_parameter"] == xi_invalidated)].drop(["invalidation_parameter", "-44604263name"], axis=1).groupby("nodecount").mean().reset_index()
 
         if len(id_res_orig.index) == 1:
             orig_r, einc_r = id_res_orig.iloc[0]["rate"], id_res_einc.iloc[0]["rate"]
@@ -39,16 +39,16 @@ def plot_on_pdf (filename, res):
         res_2 = res[res["nodecount"] == num_fact]
         with PdfPages(filename.format(num_fact)) as pdf:
             fig, ax = plt.subplots()
-            add_res_orig = res_2[res_2["name"].str.startswith(orig_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
-            add_res_inc  = res_2[res_2["name"].str.startswith(inc_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
-            # add_res_setupinc = res_2[res_2["name"].str.startswith(setupinc_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
-            #add_res_setup = res_2[res_2["name"].str.startswith(setup_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            add_res_orig = res_2[res_2["-44604263name"].str.startswith(orig_n)].drop(["-44604263name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            add_res_inc  = res_2[res_2["-44604263name"].str.startswith(inc_n)].drop(["-44604263name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            # add_res_setupinc = res_2[res_2["-44604263name"].str.startswith(setupinc_n)].drop(["-44604263name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            #add_res_setup = res_2[res_2["-44604263name"].str.startswith(setup_n)].drop(["-44604263name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
 
             # add_res_inc_comp = add_res_inc.drop(["rate"], axis=1)
             # add_res_inc_comp["rate"] = 1.0/(1.0/add_res_setupinc["rate"] - 1.0/add_res_setup["rate"])
 
-            # add_res_orig["diffsz"] = num_fact - add_res_orig["invalidation_parameter"]
-            # add_res_inc["diffsz"] = num_fact - add_res_inc["invalidation_parameter"]
+            add_res_orig["diffsz"] = np.log2(add_res_orig["diffsz"])
+            add_res_inc["diffsz"] = np.log2(add_res_inc["diffsz"])
 
             add_res_orig.plot(x="diffsz", y="rate", ax=ax, label=orig_n, marker='*', color='blue', linewidth=2, linestyle='dashed') # BLUE
             add_res_inc.plot(x="diffsz", y="rate", ax=ax, label=inc_n, marker='d', color='orange', linewidth=2) # ORANGE
@@ -78,7 +78,7 @@ def plot_on_pdf (filename, res):
             ) - 1])
 
             plt.yticks(np.arange(ymin, ymax + 1, (ymax-ymin)/10 + 1))
-            plt.xlabel("$\mathit{\# nodes\_diff}$")
+            plt.xlabel("$\log (\mathit{\# nodes\_diff})$")
             plt.ylabel("re-typings/$s$")
 
             pdf.savefig()

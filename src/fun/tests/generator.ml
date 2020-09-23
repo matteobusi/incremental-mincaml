@@ -42,7 +42,7 @@ let rec nodecount e = match e with
   | Put (e1, e2, e3, annot) -> nodecount e1 + nodecount e2 + nodecount e3
 
 (** GENERATOR 1: Generator and cache invalidator for the standard performance comparison *)
-(* Generate a balanced aAST of the specified depth (1 means just the root) whose nodes are ibop and with k *)
+(* Generate a balanced aAST of the specified depth (1 means just the root) whose nodes are ibop and with k distinct free variables *)
 let gen_ibop_ids_ast h ibop k =
   let counter = ref 0 in
   let rec aux h ibop k =
@@ -50,7 +50,7 @@ let gen_ibop_ids_ast h ibop k =
     | 0 -> failwith "gen_ibop_ids_ast: h must be >= 1."
     | 1 -> incr counter;
           counter := !counter mod k;
-          let curr_id = "x" ^ (string_of_int !counter) in (* Assure that all the variables are different! *)
+          let curr_id = "x" ^ (string_of_int !counter) in (* Makes sure that all the variables are different! *)
             Var(curr_id, ())
     | _ ->
       let laast, raast = aux (h-1) ibop k, aux (h-1) ibop k in

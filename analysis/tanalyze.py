@@ -47,11 +47,15 @@ def plot_on_pdf (filename, res):
                 add_res_orig = res_3[res_3["name"].str.startswith(orig_n)].drop(["name", "nodecount", "fvc"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
                 add_res_inc  = res_3[res_3["name"].str.startswith(inc_n)].drop(["name", "nodecount", "fvc"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
 
-                add_res_orig = add_res_orig.drop(["invalidation_parameter"], axis=1)
-                add_res_inc = add_res_inc.drop(["invalidation_parameter"], axis=1)
+                # add_res_orig = add_res_orig.drop(["invalidation_parameter"], axis=1)
+                # add_res_inc = add_res_inc.drop(["invalidation_parameter"], axis=1)
 
-                add_res_orig.plot(x="diffsz", y="rate", ax=ax, label=orig_n, marker='d', color='violet', linewidth=2, linestyle='dashed') # BLUE
-                add_res_inc.plot(x="diffsz", y="rate", ax=ax, label=inc_n, marker='o', color='orange', linewidth=2) # ORANGE
+                # add_res_orig["diffsz"] = np.log2(add_res_orig["diffsz"])
+                # add_res_inc["diffsz"] = np.log2(add_res_inc["diffsz"])
+
+
+                add_res_orig.plot(x="invalidation_parameter", y="rate", ax=ax, label=orig_n, marker='d', color='violet', linewidth=2, linestyle='dashed') # BLUE
+                add_res_inc.plot(x="invalidation_parameter", y="rate", ax=ax, label=inc_n, marker='o', color='orange', linewidth=2) # ORANGE
 
                 ymax = max (
                 [
@@ -68,7 +72,7 @@ def plot_on_pdf (filename, res):
                 ) - 1])
 
                 plt.yticks(np.arange(ymin, ymax + 1, (ymax-ymin+1)/10))
-                plt.xlabel("$\mathit{diff\_sz}$")
+                plt.xlabel("depth of the invalidated sub-tree")
                 plt.ylabel("re-typings/$s$")
 
                 pdf.savefig()

@@ -1,4 +1,5 @@
 TARGET=main
+ALL_LIBS=core,ppx_hash,ppx_compare,ppx_sexp_conv,ppx_fields_conv,core_bench,ocamlgraph,ounit2,landmarks
 
 .PHONY: all clean
 
@@ -7,25 +8,25 @@ $(TARGET): default
 default: $(TARGET).native
 
 %.native:
-	ocamlbuild  -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ocamlgraph $@
+	ocamlbuild  -tag thread -use-ocamlfind -pkg $(ALL_LIBS) $@
 
 %.byte:
-	ocamlbuild  -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ocamlgraph $@
+	ocamlbuild  -tag thread -use-ocamlfind -pkg $(ALL_LIBS) $@
 
 unittest: default
-	ocamlbuild  -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ounit2,ocamlgraph $@.native
+	ocamlbuild  -tag thread -use-ocamlfind -pkg $(ALL_LIBS) $@.native
 
 texperiments:
-	ocamlbuild -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ppx_fields_conv,ocamlgraph,core_bench texperiments.native
+	ocamlbuild -tag thread -use-ocamlfind -pkg $(ALL_LIBS) texperiments.native
 
 mexperiments:
-	ocamlbuild  -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,landmarks,ocamlgraph mexperiments.native
+	ocamlbuild  -tag thread -use-ocamlfind -pkg $(ALL_LIBS) mexperiments.native
 
 dexperiments:
-	ocamlbuild -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ppx_fields_conv,core_bench dexperiments.native
+	ocamlbuild -tag thread -use-ocamlfind -pkg $(ALL_LIBS) dexperiments.native
 
 experiments:
-	ocamlbuild -tag thread -use-ocamlfind -pkg core,ppx_hash,ppx_compare,ppx_sexp_conv,ppx_fields_conv,core_bench experiments.native
+	ocamlbuild -tag thread -use-ocamlfind -pkg $(ALL_LIBS) experiments.native
 
 all: default unittest mexperiments texperiments dexperiments
 

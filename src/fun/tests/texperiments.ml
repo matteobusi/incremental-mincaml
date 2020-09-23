@@ -1,6 +1,5 @@
 open Core
 open Core_bench
-(* open Experiments *)
 open FunSpecification.FunSpecification
 open VarSet
 
@@ -8,7 +7,7 @@ let _ =
    if Array.length Sys.argv < 4 then
     Printf.eprintf "%s quota min_depth max_depth\n" Sys.argv.(0)
   else
-    let quota, min_depth, max_depth =
+     let quota, min_depth, max_depth =
       Quota.of_string Sys.argv.(1),
       int_of_string Sys.argv.(2),
       int_of_string Sys.argv.(3) in
