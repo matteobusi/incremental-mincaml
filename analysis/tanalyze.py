@@ -38,11 +38,11 @@ def tabulate(res, interesting_pairs):
                 print("${}$ & $2^{{{}}}$ & ${:.2f}$ & ${:.2f}$ & ${:.2f}$\\\\".format(depth, fvc.bit_length() - 1, orig_r, einc_r, ratio))
 
 def plot_on_pdf (filename, res):
-    for depth in res["nodecount"].unique():
-        res_2 = res[res["nodecount"] == depth]
+    for nodecount in res["nodecount"].unique():
+        res_2 = res[res["nodecount"] == nodecount]
         for fvc in res_2["fvc"].unique():
             res_3 = res_2[res_2["fvc"] == fvc]
-            with PdfPages(filename.format(depth, fvc)) as pdf:
+            with PdfPages(filename.format(nodecount, fvc)) as pdf:
                 fig, ax = plt.subplots()
                 add_res_orig = res_3[res_3["name"].str.startswith(orig_n)].drop(["name", "nodecount", "fvc"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
                 add_res_inc  = res_3[res_3["name"].str.startswith(inc_n)].drop(["name", "nodecount", "fvc"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
@@ -50,8 +50,8 @@ def plot_on_pdf (filename, res):
                 # add_res_orig = add_res_orig.drop(["invalidation_parameter"], axis=1)
                 # add_res_inc = add_res_inc.drop(["invalidation_parameter"], axis=1)
 
-                # add_res_orig["diffsz"] = np.log2(add_res_orig["diffsz"])
-                # add_res_inc["diffsz"] = np.log2(add_res_inc["diffsz"])
+                add_res_orig["invalidation_parameter"] = np.log2(nodecount+1) - add_res_orig["invalidation_parameter"]
+                add_res_inc["invalidation_parameter"] = np.log2(nodecount+1) - add_res_inc["invalidation_parameter"]
 
 
                 add_res_orig.plot(x="invalidation_parameter", y="rate", ax=ax, label=orig_n, marker='d', color='violet', linewidth=2, linestyle='dashed') # BLUE
@@ -72,7 +72,7 @@ def plot_on_pdf (filename, res):
                 ) - 1])
 
                 plt.yticks(np.arange(ymin, ymax + 1, (ymax-ymin+1)/10))
-                plt.xlabel("depth of the invalidated sub-tree")
+                plt.xlabel("$\log ($ size of the invalidated sub-tree $ + 1)$")
                 plt.ylabel("re-typings/$s$")
 
                 pdf.savefig()

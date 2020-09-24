@@ -25,10 +25,13 @@ mexperiments:
 dexperiments:
 	ocamlbuild -tag thread -use-ocamlfind -pkg $(ALL_LIBS) dexperiments.native
 
+wexperiments:
+	ocamlbuild -tag thread -use-ocamlfind -pkg $(ALL_LIBS) wexperiments.native
+
 experiments:
 	ocamlbuild -tag thread -use-ocamlfind -pkg $(ALL_LIBS) experiments.native
 
-all: default unittest mexperiments texperiments dexperiments
+all: default unittest mexperiments texperiments dexperiments wexperiments
 
 clean:
 	ocamlbuild -clean

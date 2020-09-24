@@ -79,13 +79,13 @@ struct
             _build_cache aast t gamma cache; aast
 
     let typing ?(threshold=Int.max_value) (cache : (L.context ref * L.res) Cache.t) gamma t =
-        let incompat_cnt = ref 0 in
+        let compatcall_cnt = ref 0 in
         let rec _typing (cache : (L.context ref * L.res) Cache.t) gamma t =
             (let miss (cache : (L.context ref * L.res) Cache.t) hash gamma =
                 (match Cache.find cache hash with
                 | None -> None (* This is a miss, w/o any corresponding element in cache *)
                 | Some (gamma', res') ->
-                    incr incompat_cnt;
+                    incr compatcall_cnt;
                     (* TODO: possible optimization: check whether gamma and gamma' refer to the same location -- this requires changing cache update implementation *)
                     if L.compat !gamma !gamma' t then
                         Some res' (* This is a hit! *)
@@ -94,7 +94,7 @@ struct
                 ) in
             let (hash, fvs) = L.term_getannot t in
             let orig_call () = (let r = OriginalFunAlgorithm.typing gamma t in Cache.set cache hash (ref gamma, r); r) in
-            if !incompat_cnt > threshold then orig_call ()
+            if !compatcall_cnt > threshold then orig_call ()
             else
                 (let ts = L.get_sorted_children t in
                     match ts with
@@ -134,7 +134,7 @@ struct
                     (L.term_getannot at) := IncrementalReport.Orig;
                     Cache.set cache hash (ref gamma, r); r)
                 in
-                if report.cache_miss_inc + report.cache_miss_none > threshold then (Printf.eprintf "orig: %d %d\n" report.cache_miss_none report.cache_miss_inc; flush stderr; orig_call ())
+                if report.cache_miss_inc + report.cache_hit > threshold then (Printf.eprintf "orig: %d %d\n" report.cache_miss_none report.cache_miss_inc; flush stderr; orig_call ())
                 else
                     (match ts with
                     | [] -> orig_call () (* Call the original algorithm and update the cache *)

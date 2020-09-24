@@ -36,14 +36,6 @@ let just_cache e l =
         exit l
 
 (*
-let repeat f k =
-  let rec _repeat f i =
-    match i with
-    | k - 1 -> ()
-    | _ -> Printf.printf "\tRun #%d\n" (i+1); ignore f; _repeat f (i+1)
-  in _repeat f 0 *)
-
-(*
   This is a pretty rough evaluation for the memory.
   We simply take the number of repetitions we should do, the maximum depth of the synthetic program and we evaluate the running.
   Note that here modifications do not matter at all!

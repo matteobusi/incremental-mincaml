@@ -3,17 +3,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import rcParams
+from cycler import cycler
 import seaborn as sns
 import sys
 import os
 
 ## Names of the experiments, taken from ocaml source
-orig_n = "orig:"
+orig_n = "orig"
 einc_n = "einc"
 finc_n = "finc"
-setupinc_n = "setup+inc:"
+setupinc_n = "setup+inc"
 setup_n = "setup:"
-inc_n = "inc:"
+inc_n = "inc"
 ##
 
 font = {'family' : 'serif',
@@ -39,22 +40,22 @@ def plot_on_pdf (filename, res):
         res_2 = res[res["nodecount"] == num_fact]
         with PdfPages(filename.format(num_fact)) as pdf:
             fig, ax = plt.subplots()
-            add_res_orig = res_2[res_2["name"].str.startswith(orig_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
-            add_res_inc  = res_2[res_2["name"].str.startswith(inc_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
-            # add_res_setupinc = res_2[res_2["name"].str.startswith(setupinc_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
-            #add_res_setup = res_2[res_2["name"].str.startswith(setup_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            from matplotlib.cm import get_cmap
 
-            # add_res_inc_comp = add_res_inc.drop(["rate"], axis=1)
-            # add_res_inc_comp["rate"] = 1.0/(1.0/add_res_setupinc["rate"] - 1.0/add_res_setup["rate"])
+            name = "Accent"
+            cmap = get_cmap(name)  # type: matplotlib.colors.ListedColormap
+            colors = cmap.colors  # type: list
+            ax.set_prop_cycle(color=colors)
+
+            add_res_orig = res_2[res_2["name"].str.startswith(orig_n)].drop(["name", "nodecount", "invalidation_parameter","threshold"], axis=1).groupby(["diffsz"]).mean().reset_index()
+            add_res_inc  = res_2[res_2["name"].str.startswith(inc_n)].drop(["name", "nodecount", "invalidation_parameter"], axis=1).groupby(["diffsz","threshold"]).mean().reset_index()
 
             add_res_orig["diffsz"] = np.log2(add_res_orig["diffsz"])
             add_res_inc["diffsz"] = np.log2(add_res_inc["diffsz"])
 
-            add_res_orig.plot(x="diffsz", y="rate", ax=ax, label=orig_n, marker='*', color='blue', linewidth=2, linestyle='dashed') # BLUE
-            add_res_inc.plot(x="diffsz", y="rate", ax=ax, label=inc_n, marker='d', color='orange', linewidth=2) # ORANGE
-            # add_res_setupinc.plot(x="diffsz", y="rate", ax=ax, label=setupinc_n, marker='*', color='red', linewidth=2) # RED
-            #add_res_setup.plot(x="diffsz", y="rate", ax=ax, label=setup_n, marker='o', color='green', linewidth=2) # GREEN
-            # add_res_inc_comp.plot(x="diffsz", y="rate", ax=ax, label="inc\_comp", marker='X', color='violet', linewidth=2) # YELLOW
+            add_res_orig.plot(x="diffsz", y="rate", ax=ax, marker='*', linewidth=1, label=orig_n,linestyle='dashed') # BLUE
+            for t in add_res_inc["threshold"].unique():
+                add_res_inc[add_res_inc["threshold"] == t].drop(["threshold"], axis=1).plot(x="diffsz", y="rate", ax=ax, marker='+', label=inc_n + " (" + str(t) + ")", linewidth=1) # ORANGE
 
             # plt.xticks(np.arange(min(add_res_orig["diffsz"]), max(add_res_orig["diffsz"]) + 1, 1.0))
             ymax = max (
@@ -80,6 +81,10 @@ def plot_on_pdf (filename, res):
             plt.yticks(np.arange(ymin, ymax + 1, (ymax-ymin)/10 + 1))
             plt.xlabel("$\log (\mathit{\# nodes\_diff})$")
             plt.ylabel("re-typings/$s$")
+
+            # plt.legend().remove()
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0.)
+
 
             pdf.savefig()
             plt.close()

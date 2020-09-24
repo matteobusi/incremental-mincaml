@@ -43,11 +43,11 @@ let rec nodecount e = match e with
 
 (** GENERATOR 1: Generator and cache invalidator for the standard performance comparison *)
 (* Generate a balanced aAST of the specified depth (1 means just the root) whose nodes are ibop and with k distinct free variables *)
-let gen_ibop_ids_ast h ibop k =
+let ibop_gen_ast h ibop k =
   let counter = ref 0 in
   let rec aux h ibop k =
     match h with
-    | 0 -> failwith "gen_ibop_ids_ast: h must be >= 1."
+    | 0 -> failwith "(gen_ibop_ids_ast) h must be >= 1."
     | 1 -> incr counter;
           counter := !counter mod k;
           let curr_id = "x" ^ (string_of_int !counter) in (* Makes sure that all the variables are different! *)
@@ -59,25 +59,25 @@ let gen_ibop_ids_ast h ibop k =
     OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) e
 
 (* Invalidate the entries corresponding to the rightmost subtree at depth d (0 for the root) in e to simulate a modification to e *)
-let rec simulate_modification cache e d =
+let rec ibop_sim_change cache e d =
   let rec invalidate_cache cache e =
     IncrementalFunAlgorithm.Cache.remove cache (fst (term_getannot e));
     match e with (* Restricted to IBop and Var *)
     | Var(id, _) -> ()
     | IBop(op, l, r, _) -> invalidate_cache cache l; invalidate_cache cache r
-    | _ -> failwith "invalidate_cache: unsupported aAST."
+    | _ -> failwith "(ibop_sim_change) Unsupported aAST."
   in
   match (e, d) with
   | (_, 0) -> invalidate_cache cache e
-  | (Var(_, _), _) -> failwith "simulate_modification: d is too big!"
+  | (Var(_, _), _) -> failwith "(ibop_sim_change) d is too big!"
   | (IBop(_, _, r, _), _) ->
     IncrementalFunAlgorithm.Cache.remove cache (fst (term_getannot e));
-    simulate_modification cache r (d-1)
-  | _ -> failwith "simulate_modification: unsupported aAST."
+    ibop_sim_change cache r (d-1)
+  | _ -> failwith "(ibop_sim_change) Unsupported aAST."
 
 (** GENERATORS 2: generator and corresponding cache invalidator for code with a lot of internal deps. *)
 (* Generates an expression computing the factorial n, that corresponds to the unrolled recursion of classical factorial *)
-let fact_unroll n =
+let fact_gen_ast n =
   let rec aux (i : int) (n : int) : unit FunSpecification.FunSpecification.term =
     if i = 1 then
           Let ("x_" ^ (string_of_int i),
@@ -106,16 +106,51 @@ For i' > i one may think that we should not invalidate let x_i' = ... in ... bec
 the term should _syntactically_ present in the cache, though its existing type might not be correct anymore.
 However since our changes are synthetic and nodes related to i' are expected to depend on i, we still need to invalidate all the nodes.
 *)
-let rec simulate_fullchange cache e i =
+let rec fact_sim_change cache e i =
   (* Remove all the nodes on the path to let x_i = ... in ... *)
     IncrementalFunAlgorithm.Cache.remove cache (fst (term_getannot e));
     match e with
     | Let (xi, e1, e2, _) ->
       (
         let i' = int_of_string (String.slice xi 2 0) in
-          if i' < i then simulate_fullchange cache e2 i
-          else (simulate_fullchange cache e1 i; simulate_fullchange cache e2 i)
+          if i' < i then fact_sim_change cache e2 i
+          else (fact_sim_change cache e1 i; fact_sim_change cache e2 i)
       )
     | Int (_, _) | Var(_, _) -> ()
-    | IBop(op, l, r, _) -> simulate_fullchange cache l i; simulate_fullchange cache r i
-    | _ -> failwith "(dexperiments.ml:118) Error: unsupported aAST."
+    | IBop(op, l, r, _) -> fact_sim_change cache l i; fact_sim_change cache r i
+    | _ -> failwith "(fact_sim_change) Error: unsupported aAST."
+
+(* Generator #3: exponential growth of types from Kanellakis&Mitchell 1989 *)
+let exp_gen_ast n =
+  let rec aux (i : int) (n : int) : unit FunSpecification.FunSpecification.term =
+    if i = 1 then
+      Let ("x_" ^ (string_of_int i),
+        Int (i, ()),
+        aux (i+1) n,
+      ())
+    else if (i <= n) then
+      Let ("x_" ^ (string_of_int i),
+          Tuple
+          ([
+            (Var ("x_" ^ (string_of_int (i-1)), ()));
+            (Var ("x_" ^ (string_of_int (i-1)), ()))
+          ], ()),
+          aux (i+1) n,
+          ())
+    else
+      (Var ("x_" ^ (string_of_int (i-1)), ())) in
+  aux 1 n
+
+let rec exp_sim_change cache e i =
+  (* Remove all the nodes on the path to let x_i = ... in ... *)
+    IncrementalFunAlgorithm.Cache.remove cache (fst (term_getannot e));
+    match e with
+    | Let (xi, e1, e2, _) ->
+      (
+        let i' = int_of_string (String.slice xi 2 0) in
+          if i' < i then exp_sim_change cache e2 i
+          else (exp_sim_change cache e1 i; exp_sim_change cache e2 i)
+      )
+    | Int (_, _) | Var(_, _) -> ()
+    | Tuple (es, _) -> List.iter ~f:(fun e -> exp_sim_change cache e i) es
+    | _ -> failwith "(exp_sim_change) Error: unsupported aAST."

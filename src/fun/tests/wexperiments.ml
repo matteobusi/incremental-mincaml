@@ -18,7 +18,7 @@ let _ =
       int_of_string Sys.argv.(5) in
     let n_list = Generator.gen_list (Generator.pow 2 min) (Generator.pow 2 max) (fun n -> n*2) in
     let annotated_fact e = annotate_fv (OriginalFunAlgorithm.term_map (fun e -> compute_hash e) e) in
-    let prog_list = List.map ~f:(fun n -> (n,  annotated_fact (Generator.fact_gen_ast n))) n_list in
+    let prog_list = List.map ~f:(fun n -> (n,  annotated_fact (Generator.exp_gen_ast n))) n_list in
     let len = List.length prog_list in
     Printf.printf "name, fvc, invalidation_parameter, nodecount, diffsz, threshold, rate\n"; flush stdout;
     List.iteri ~f:(fun i (n, e) -> (
@@ -39,7 +39,7 @@ let _ =
             Core_bench.Verbosity.Quiet
             ~threshold:t
             IncrementalFunAlgorithm.typing
-            Generator.fact_sim_change
+            Generator.exp_sim_change
             xi_invalidated
             0
             gamma_init
