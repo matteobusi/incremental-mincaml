@@ -100,7 +100,7 @@ let check_cache_result file =
 
 let run fv_c depth =
   (* Fill up the initial gamma with needed identifiers *)
-  let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
+  let e = Generator.ibop_gen_ast depth "+" fv_c in
   let initial_gamma_list e = List.map ~f:(fun id -> (id, TInt)) (VarSet.elements (compute_fv e)) in
   let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
   (* These are just to avoid multiple recomputations *)
@@ -113,14 +113,14 @@ let run fv_c depth =
 
 let run_mod fv_c depth inv_depth =
   (* Fill up the initial gamma with needed identifiers *)
-  let e = Generator.gen_ibop_ids_ast depth "+" fv_c in
+  let e = Generator.ibop_gen_ast depth "+" fv_c in
   let initial_gamma_list e = (List.map ~f:(fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
   let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
   let full_cache = IncrementalFunAlgorithm.get_empty_cache () in
   (* Build the full cache for e *)
   ignore (IncrementalFunAlgorithm.build_cache e gamma_init full_cache);
   (* Invalidate part of the cache, corresponding to the rightmost subtree of depth tree_depth - d; This simulates diffs. *)
-  Generator.simulate_modification full_cache e inv_depth;
+  Generator.ibop_sim_change full_cache e inv_depth;
   (* IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
   IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount e) IncrementalFunAlgorithm.report; *)
   ignore (IncrementalFunAlgorithm.typing_w_report (nodecount e) full_cache gamma_init e); (*Analyse the modified program *)
