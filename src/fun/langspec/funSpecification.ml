@@ -5,6 +5,15 @@ open LanguageSpecification
 
 module FunSpecification (* : LanguageSpecification *) = struct
     (* Syntax + meta-functions *)
+    type res =
+        | TUnit
+        | TBool
+        | TInt
+        | TFloat
+        | TFun of res list * res (* arguments are uncurried *)
+        | TTuple of res list
+        | TArray of res [@@deriving hash]
+
     type 'a term =
         | Unit of ('a [@hash.ignore])
         | Bool of bool * ('a [@hash.ignore])
@@ -27,17 +36,8 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Get of 'a term * 'a term * ('a [@hash.ignore])
         | Put of 'a term * 'a term * 'a term * 'a [@@deriving hash]
     and 'a fundef = { name : string * res; args : (string * res) list; body : 'a term }
-    and res =
-        | TUnit
-        | TBool
-        | TInt
-        | TFloat
-        | TFun of res list * res (* arguments are uncurried *)
-        | TTuple of res list
-        | TArray of res
 
     type context = res FunContext.t
-
 
     (* ============================================================================================================== *)
     let rec type_ppf ppf type_t =
@@ -235,7 +235,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
     let compat gamma gamma' at =
         (* Straightorward implementation from the theory: *)
         let fv = snd (term_getannot at) in
-            VarSet.for_all fv ~f:(fun v -> (FunContext.find gamma v) = (FunContext.find gamma' v))
+            VarSet.for_all fv ~f:(fun v -> FunContext.find gamma v = FunContext.find gamma' v)
 
     (* i indicates that the i-th element is being processed (0-based) *)
     let tr (i : int) (ti : (int * VarSet.t) term) (t : (int * VarSet.t) term) (gamma : context) (rs : res list) : context =

@@ -1,5 +1,5 @@
 TARGET=main
-ALL_LIBS=core,ppx_hash,ppx_compare,ppx_sexp_conv,ppx_fields_conv,core_bench,ocamlgraph,ounit2,landmarks
+ALL_LIBS=core,ppx_hash,ppx_compare,ppx_sexp_conv,ppx_fields_conv,core_bench,ocamlgraph,ounit2,landmarks,ppx_deriving.fold,ppx_deriving.show,ppx_deriving.map,ppx_deriving.iter
 
 .PHONY: all clean
 

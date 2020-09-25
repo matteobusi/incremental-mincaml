@@ -49,7 +49,15 @@ struct
 
         let register_orig_call r = r.orig_call <- r.orig_call + 1
 
-        let string_of_report r = Printf.sprintf "[Visited: %d/%d] O: %d - H: %d - M: %d (I) + %d (NF) = %d" (r.cache_miss_inc+r.cache_miss_none+r.cache_hit+r.orig_call) r.nc r.orig_call r.cache_hit r.cache_miss_inc r.cache_miss_none (r.cache_miss_inc+r.cache_miss_none)
+        let string_of_report r = Printf.sprintf
+            "[Visited: %d/%d] O: %d - H: %d - M: %d (I) + %d (NF) = %d"
+                (r.cache_miss_inc+r.cache_miss_none+r.cache_hit+r.orig_call)
+                r.nc
+                r.orig_call
+                r.cache_hit
+                r.cache_miss_inc
+                r.cache_miss_none
+                (r.cache_miss_inc+r.cache_miss_none)
     end
 
     let report = IncrementalReport.create
@@ -122,6 +130,7 @@ struct
                 | None ->
                     IncrementalReport.register_miss_none report; None (* This is a miss, w/o any corresponding element in cache *)
                 | Some (gamma', res') ->
+                    (* TODO: Compare count should be removed *)
                     if L.compat !gamma !gamma' t then
                         (IncrementalReport.register_hit report; Some res') (* This is a hit! *)
                     else

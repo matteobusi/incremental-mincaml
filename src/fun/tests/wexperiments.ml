@@ -7,7 +7,7 @@ open VarSet
 module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
 
 let _ =
-   if Array.length Sys.argv < 6 then
+  if Array.length Sys.argv < 6 then
     Printf.eprintf "Usage: %s quota min max step threshold_fractions\n" Sys.argv.(0)
   else
     let quota, min, max, n_intervals, threshold_fractions =

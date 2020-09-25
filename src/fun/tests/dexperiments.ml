@@ -30,7 +30,7 @@ let _ =
         flush stderr;
         let gamma_init = FunContext.get_empty_context () in
         let nc = nodecount e in
-        let t_list = Generator.gen_list (nc/threshold_fractions) nc (fun s -> s + int_of_float (0.5 +. float_of_int (nc-1)/. float_of_int (threshold_fractions - 1))) in
+        let t_list = 0::(Generator.gen_list (nc/threshold_fractions) nc (fun s -> s + int_of_float (0.5 +. float_of_int (nc-1)/. float_of_int (threshold_fractions - 1))))@[Int.max_value] in
         List.iteri ~f:(fun k t ->
         Printf.eprintf "\t\t[%d/%d] threshold=%d ... " (k+1) (List.length t_list) t;
         flush stderr;

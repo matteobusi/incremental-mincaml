@@ -9,6 +9,10 @@ PKG core_bench
 PKG qcheck
 PKG ppx_hash
 PKG ppx_compare
+PKG ppx_deriving.fold
+PKG ppx_deriving.show
+PKG ppx_deriving.map
+PKG ppx_deriving.iter
 PKG ppx_sexp_conv
 PKG ounit2
 PKG landmarks
