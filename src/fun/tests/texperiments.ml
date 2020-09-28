@@ -30,8 +30,10 @@ let _ =
             Printf.eprintf "\t\t[%d/%d] inv_depth=%d ... " (k+1) (List.length inv_depth_list) inv_depth;
             flush stderr;
             let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
-            let simplified_results = Experiments.throughput_original_vs_inc quota Core_bench.Verbosity.Quiet IncrementalFunAlgorithm.typing Generator.ibop_sim_change inv_depth fv_c gamma_init e in
-              Experiments.print_csv simplified_results;
+            let orig_vs_inc_res = Experiments.throughput_original_vs_inc quota Core_bench.Verbosity.Quiet IncrementalFunAlgorithm.typing Generator.ibop_sim_change inv_depth fv_c gamma_init e in
+            let caches_res = Experiments.throughput_caches quota Core_bench.Verbosity.Quiet IncrementalFunAlgorithm.typing fv_c gamma_init e in
+              Experiments.print_csv orig_vs_inc_res;
+              Experiments.print_csv caches_res;
               Printf.eprintf "done!\n";
               flush stderr;
           ) inv_depth_list

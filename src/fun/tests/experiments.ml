@@ -83,8 +83,9 @@ let measure ?(run_config=Run_config.create ()) tests =
 let throughput_caches
   quota
   verbosity
-  gamma_init
+  incremental_typing_fun
   fvc
+  gamma_init
   e =
     let nc = Generator.nodecount e in
     (* Just compute the cache once: *)
@@ -95,10 +96,10 @@ let throughput_caches
         [
           Stest.create ~name:finc_n
             (fun () -> IncrementalFunAlgorithm.Cache.copy experiment_cache)
-            (fun cache -> IncrementalFunAlgorithm.typing cache gamma_init e);
+            (fun cache -> incremental_typing_fun cache gamma_init e);
           Stest.create ~name:einc_n
           (fun () -> IncrementalFunAlgorithm.get_empty_cache ())
-          (fun cache -> IncrementalFunAlgorithm.typing cache gamma_init e);
+          (fun cache -> incremental_typing_fun cache gamma_init e);
         ] in
       let results = List.map ~f:(fun m -> Analysis.analyze m Analysis_config.default) measures in
       let results = List.filter_map
