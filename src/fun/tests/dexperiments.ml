@@ -30,14 +30,14 @@ let _ =
         flush stderr;
         let gamma_init = FunContext.get_empty_context () in
         let nc = nodecount e in
-        let t_list = 0::(Generator.gen_list (nc/threshold_fractions) nc (fun s -> s + int_of_float (0.5 +. float_of_int (nc-1)/. float_of_int (threshold_fractions - 1))))@[Int.max_value] in
+        let t_list = (List.map ~f:(fun v -> Some v) (0::(Generator.gen_list (nc/threshold_fractions) nc (fun s -> s + int_of_float (0.5 +. float_of_int (nc-1)/. float_of_int (threshold_fractions - 1))))))@[None] in
         List.iteri ~f:(fun k t ->
-        Printf.eprintf "\t\t[%d/%d] threshold=%d ... " (k+1) (List.length t_list) t;
+        Printf.eprintf "\t\t[%d/%d] threshold=%d ... " (k+1) (List.length t_list) (Option.value t ~default:(-1));
         flush stderr;
         let simplified_results = Experiments.throughput_original_vs_inc
             quota
             Core_bench.Verbosity.Quiet
-            ~threshold:t
+            ?threshold:t
             IncrementalFunAlgorithm.typing
             Generator.fact_sim_change
             xi_invalidated

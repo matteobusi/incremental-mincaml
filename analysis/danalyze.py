@@ -25,16 +25,6 @@ plt.rc('text', usetex=True)
 plt.rc('font', **font)
 rcParams.update({'figure.autolayout': True})
 
-def tabulate(res, interesting_pairs):
-    for (num_fact, xi_invalidated) in interesting_pairs:
-        id_res_orig = res[(res["name"].str.startswith(orig_n)) & (res["nodecount"] == num_fact) & (res["invalidation_parameter"] == xi_invalidated)].drop(["invalidation_parameter", "name"], axis=1).groupby("nodecount").mean().reset_index()
-        id_res_einc = res[(res["name"].str.startswith(einc_n)) & (res["nodecount"] == num_fact) & (res["invalidation_parameter"] == xi_invalidated)].drop(["invalidation_parameter", "name"], axis=1).groupby("nodecount").mean().reset_index()
-
-        if len(id_res_orig.index) == 1:
-            orig_r, einc_r = id_res_orig.iloc[0]["rate"], id_res_einc.iloc[0]["rate"]
-            ratio = einc_r / orig_r
-            print("${}$ & ${:.2f}$ & ${:.2f}$ & ${:.2f}$\\\\".format(num_fact, orig_r, einc_r, ratio))
-
 def plot_on_pdf (filename, res):
     for num_fact in res["nodecount"].unique():
         res_2 = res[res["nodecount"] == num_fact]
@@ -53,9 +43,13 @@ def plot_on_pdf (filename, res):
             add_res_orig["diffsz"] = np.log2(add_res_orig["diffsz"])
             add_res_inc["diffsz"] = np.log2(add_res_inc["diffsz"])
 
-            add_res_orig.plot(x="diffsz", y="rate", ax=ax, marker='*', linewidth=1, label=orig_n,linestyle='dashed') # BLUE
             for t in add_res_inc["threshold"].unique():
-                add_res_inc[add_res_inc["threshold"] == t].drop(["threshold"], axis=1).plot(x="diffsz", y="rate", ax=ax, marker='+', label=inc_n + " (" + str(t) + ")", linewidth=1) # ORANGE
+                if t != 4611686018427387903:
+                    add_res_inc[add_res_inc["threshold"] == t].drop(["threshold"], axis=1).plot(x="diffsz", y="rate", ax=ax, marker='+', label=inc_n + " (" + str(t) + ")", linewidth=1) #
+
+            add_res_orig.plot(x="diffsz", y="rate", ax=ax, marker='*', linewidth=1, color="blue", label=orig_n, linestyle='dashed') # BLUE
+            add_res_inc[add_res_inc["threshold"] == 4611686018427387903].drop(["threshold"], axis=1).plot(x="diffsz", y="rate", ax=ax, marker='d', label=inc_n, color="red", linewidth=1) # ORANGE
+
 
             # plt.xticks(np.arange(min(add_res_orig["diffsz"]), max(add_res_orig["diffsz"]) + 1, 1.0))
             ymax = max (

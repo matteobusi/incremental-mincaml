@@ -54,7 +54,7 @@ let rec nodecount e = match e with
   | Put (e1, e2, e3, annot) -> 1 + nodecount e1 + nodecount e2 + nodecount e3
 
 
-let extract_minimal (results : Core_bench.Simplified_benchmark.Results.t) nodecount diffsz fvc threshold=
+let extract_minimal (results : Core_bench.Simplified_benchmark.Results.t) nodecount diffsz fvc threshold =
   let invalidation_parameter_of_name name =
     match String.split ~on:':' name with
     | [n] -> -1
@@ -70,7 +70,7 @@ let extract_minimal (results : Core_bench.Simplified_benchmark.Results.t) nodeco
       nodecount = nodecount;
       diffsz = diffsz;
       rate = rate_of_time r.time_per_run_nanos;
-      threshold = threshold
+      threshold = (Option.value threshold ~default:(-1))
     }) in
   (List.map ~f:project results)
 
@@ -80,15 +80,45 @@ let measure ?(run_config=Run_config.create ()) tests =
   let basic_tests = Stest.expand tests in
   Sbenchmark.measure_all run_config basic_tests
 
+let throughput_caches
+  quota
+  verbosity
+  gamma_init
+  fvc
+  e =
+    let nc = Generator.nodecount e in
+    (* Just compute the cache once: *)
+    let experiment_cache = IncrementalFunAlgorithm.get_empty_cache () in
+      ignore (IncrementalFunAlgorithm.build_cache e gamma_init experiment_cache);
+      let measures = measure
+        ~run_config:(Core_bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
+        [
+          Stest.create ~name:finc_n
+            (fun () -> IncrementalFunAlgorithm.Cache.copy experiment_cache)
+            (fun cache -> IncrementalFunAlgorithm.typing cache gamma_init e);
+          Stest.create ~name:einc_n
+          (fun () -> IncrementalFunAlgorithm.get_empty_cache ())
+          (fun cache -> IncrementalFunAlgorithm.typing cache gamma_init e);
+        ] in
+      let results = List.map ~f:(fun m -> Analysis.analyze m Analysis_config.default) measures in
+      let results = List.filter_map
+        ~f:(fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
+          | Error err -> Printf.eprintf "(experiments.ml) Warning: test omitted since %s.\n" (Core.Error.to_string_hum err); None
+          | Ok r -> Some r) results in
+      (* Ugly hack, should use extract but it is not exposed by the interface! *)
+      let results = Core_bench.Simplified_benchmark.Results.t_of_sexp (Core_bench.Simplified_benchmark.to_sexp results) in
+        extract_minimal results nc 0 fvc None
 
-let throughput_original_vs_inc quota verbosity ?(threshold=Int.max_value) (incremental_typing_fun :  ?threshold:Core.Int.t ->
-         (FunSpecification.FunSpecification.context Core.ref *
-          FunSpecification.FunSpecification.res)
-         IncrementalFunAlgorithm.Cache.t ->
-         FunSpecification.FunSpecification.context ->
-         ('a IncrementalFunAlgorithm.Cache.key_ * VarSet.t)
-         FunSpecification.FunSpecification.term ->
-         FunSpecification.FunSpecification.res) cache_invalidator invalidator_param fvc gamma_init e =
+let throughput_original_vs_inc
+  quota
+  verbosity
+  ?threshold
+  incremental_typing_fun
+  cache_invalidator
+  invalidator_param
+  fvc
+  gamma_init
+  e =
     let nc = Generator.nodecount e in
     (* Just compute the cache once: *)
     let experiment_cache = IncrementalFunAlgorithm.get_empty_cache () in
@@ -103,24 +133,15 @@ let throughput_original_vs_inc quota verbosity ?(threshold=Int.max_value) (incre
             ~name:(orig_n ^ ":" ^ (string_of_int invalidator_param))
             (fun () -> IncrementalFunAlgorithm.Cache.copy experiment_cache)
             (fun _ -> OriginalFunAlgorithm.typing gamma_init e);
-          (* Bench.Test.create ~name:finc_n
-            (let cache = IncrementalFunAlgorithm.get_empty_cache nc in
-                ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
-                fun () -> IncrementalFunAlgorithm.typing cache gamma_init e
-            );
-          Bench.Test.create ~name:einc_n
-            (fun () -> IncrementalFunAlgorithm.typing (IncrementalFunAlgorithm.get_empty_cache nc) gamma_init e); *)
           Stest.create ~name:(inc_n ^ ":" ^ (string_of_int invalidator_param))
           (fun () -> IncrementalFunAlgorithm.Cache.copy experiment_cache)
           (fun cache ->
-            (* assert(oldsz - IncrementalFunAlgorithm.Cache.length cache = diffsz);
-            Printf.eprintf "diff=%d\n" diffsz; flush stderr; *)
-            incremental_typing_fun ~threshold:threshold cache gamma_init e);
+            incremental_typing_fun ?threshold:threshold cache gamma_init e);
         ] in
       let results = List.map ~f:(fun m -> Analysis.analyze m Analysis_config.default) measures in
       let results = List.filter_map
         ~f:(fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with
-          | Error err -> Printf.eprintf "(dexperiments.ml:59) Warning: test omitted since %s.\n" (Core.Error.to_string_hum err); None
+          | Error err -> Printf.eprintf "(experiments.ml) Warning: test omitted since %s.\n" (Core.Error.to_string_hum err); None
           | Ok r -> Some r) results in
       (* Ugly hack, should use extract but it is not exposed by the interface! *)
       let results = Core_bench.Simplified_benchmark.Results.t_of_sexp (Core_bench.Simplified_benchmark.to_sexp results) in
