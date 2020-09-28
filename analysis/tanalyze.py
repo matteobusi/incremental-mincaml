@@ -54,8 +54,8 @@ def plot_on_pdf (filename, res):
                 add_res_inc["invalidation_parameter"] = np.log2(nodecount+1) - add_res_inc["invalidation_parameter"]
 
 
-                add_res_orig.plot(x="invalidation_parameter", y="rate", ax=ax, label=orig_n, marker='d', color='violet', linewidth=2, linestyle='dashed') # BLUE
-                add_res_inc.plot(x="invalidation_parameter", y="rate", ax=ax, label=inc_n, marker='o', color='orange', linewidth=2) # ORANGE
+                add_res_orig.plot(x="invalidation_parameter", y="rate", ax=ax, label=orig_n, marker='*', color='blue', linewidth=1, linestyle='dashed') # BLUE
+                add_res_inc.plot(x="invalidation_parameter", y="rate", ax=ax, label=inc_n, marker='o', color='orange', linewidth=1) # ORANGE
 
                 ymax = max (
                     [
@@ -72,8 +72,8 @@ def plot_on_pdf (filename, res):
                 ) - 1])
 
                 plt.yticks(np.arange(ymin, ymax + 1, (ymax-ymin+1)/10))
-                plt.xlabel("$\log ($ size of the invalidated sub-tree $ + 1)$")
-                plt.ylabel("re-typings/$s$")
+                plt.xlabel("$\log ($ size of the diff sub-tree $ + 1)$")
+                plt.ylabel("throughput (re-typings/$s$)")
 
                 pdf.savefig()
                 plt.close()

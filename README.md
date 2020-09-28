@@ -11,7 +11,6 @@ The project requires:
 
 - [OCaml = 4.07.1](http://www.ocaml.org/) standard compilers and tools
 - [OUnit2 = 2.2.2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library.
-- [Batteries = 3.0.0](http://batteries.forge.ocamlcore.org/) OCaml alternative standard library.
 - [Core = v0.12.4](https://github.com/janestreet/core) JaneStreet's alternative to OCaml's standard library.
 - [Core_bench = v0.12.0](https://github.com/janestreet/core_bench) OCaml library for micro-benchmarking.
 - [Landmarks = 1.3](https://github.com/LexiFi/landmarks) OCaml profiling library.
@@ -35,6 +34,11 @@ $ make test
 ```
 
 To build the executable running the time experiments, run:
+```
+$ make texperiments
+```
+
+To build the executable running the experiments on the unrolled factorial, run:
 ```
 $ make texperiments
 ```
@@ -86,6 +90,14 @@ $ ./texperiments.native quota min_depth max_depth
 ```
 where `quota` is the running time of each experiment, and `min_depth` and `max_depth` specify the size of synthetic programs.
 
+## Running experiments on the unrolled factorial #
+
+To run the experiments on the unrolled factorial, simply compile the executable as described above and then run the executable:
+```
+$ ./dexperiments.native quota min max step threshold_fractions
+```
+where `quota` is the running time of each experiment, `min` and `max` are the values of unrolled factorial, `step` expresses the number of invalidations to be performed and `threshold_fractions` indicates how many different thresholds must be tried.
+
 ## Running the memory experiments #
 
 To run the memory experiments, simply compile the executable as described above and then run the executable:
@@ -98,9 +110,15 @@ where `min_depth` and `max_depth` specify the size of synthetic programs and `ca
 
 To reproduce the experiments presented of the paper, it is enough to compile `texperiments` and then to run:
 ```
-$ ./texperiments.native 10 8 16 true > results-10-8-16.csv; python analysis/tanalyze.py results-10-8-16.csv plots/
+$ ./texperiments.native 10 8 16 > tresults-10-8-16.csv; python analysis/tanalyze.py tresults-10-8-16.csv tplots/
 ```
-It creates a new folder `plots` with all the generated plots and a csv file with the raw results.
+It creates a new folder `tplots` with all the generated plots and a csv file with the raw results.
+
+Similarly, for the unrolled factorial experiments it suffices to compile `dexperiments` and then to run:
+```
+$ ./texperiments.native 10 8 12 4 10 > dresults-10-8-12-4-10.csv; python analysis/danalyze.py dresults-10-8-12-4-10.csv dplots/
+```
+It creates a new folder `dplots` with all the generated plots and a csv file with the raw results.
 
 To reproduce the memory experiments presented of the paper, it is enough to compile `mexperiments` and then to run:
 ```
@@ -127,11 +145,14 @@ The `src/` directory defines:
           languageSpecification.mli     <-- Interface that must be implemented to be able to incrementalize a type system
           original.ml                   <-- Functor that given a language specification returns a non-incremental type system
           incrementalizer.ml            <-- Functor that given a language specification returns an incremental type system
+          report.ml                     <-- Module used for extracting statistics on cache usage
+          varSet.ml                     <-- Utility module used for implementing sets of variables (e.g. sets of free variables of a term)
      fun/                               <-- MinCaml folder
           examples                      <-- Simple MinCaml examples
           langspec                      <-- An example implementation of the MinCaml type checker in our framework
           tests                         <-- Unit tests and time/memory experiments
           main.ml                       <-- Example usage of the generated type systems
+     tests/                             <-- Folder with the implementations of benchmarks
 
 ## Known issues (to solve in future versions) #
 - None, yet
