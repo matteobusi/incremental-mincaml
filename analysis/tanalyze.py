@@ -11,8 +11,6 @@ import os
 orig_n = "orig"
 einc_n = "einc"
 finc_n = "finc"
-setupinc_n = "setup+inc"
-setup_n = "setup"
 inc_n = "inc"
 ##
 
@@ -26,8 +24,8 @@ rcParams.update({'figure.autolayout': True})
 
 def tabulate(res, interesting_pairs):
     for (depth, fvc) in interesting_pairs:
-        id_res_orig = res[(res["name"].str.startswith(orig_n)) & (res["nodecount"] == depth) & (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc"], axis=1).groupby("nodecount").mean().reset_index()
-        id_res_einc = res[(res["name"].str.startswith(einc_n)) & (res["nodecount"] == depth) & (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc"], axis=1).groupby("nodecount").mean().reset_index()
+        id_res_orig = res[(res["name"].str.startswith(orig_n)) & (res["nodecount"] == 2**depth - 1) & (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc"], axis=1).groupby("nodecount").mean().reset_index()
+        id_res_einc = res[(res["name"].str.startswith(einc_n)) & (res["nodecount"] == 2**depth - 1) & (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc"], axis=1).groupby("nodecount").mean().reset_index()
 
         if len(id_res_orig.index) == 1:
             orig_r, einc_r = id_res_orig.iloc[0]["rate"], id_res_einc.iloc[0]["rate"]
@@ -55,7 +53,7 @@ def plot_on_pdf (filename, res):
 
 
                 add_res_orig.plot(x="invalidation_parameter", y="rate", ax=ax, label=orig_n, marker='*', color='blue', linewidth=1, linestyle='dashed') # BLUE
-                add_res_inc.plot(x="invalidation_parameter", y="rate", ax=ax, label=inc_n, marker='o', color='orange', linewidth=1) # ORANGE
+                add_res_inc.plot(x="invalidation_parameter", y="rate", ax=ax, label=inc_n, marker='d', color='orange', linewidth=1) # ORANGE
 
                 ymax = max (
                     [
@@ -84,7 +82,6 @@ if __name__ == "__main__":
         print(("Usage: {} input_file.csv dest_path\n").format(sys.argv[0]))
     else:
         res = pandas.read_csv(sys.argv[1], sep=", ", engine="python", dtype={'fvc':int, 'invalidation_parameter':int, 'nodecount':int, 'diffsz' : int, 'rate':float})
-        #.drop(["repeat", "time"], axis=1)
 
         # Just plot for "big" enough trees
         res = res[res["nodecount"] >= 2**8]
