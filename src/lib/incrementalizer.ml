@@ -7,9 +7,12 @@ open Original
 module TypeAlgorithm (L : LanguageSpecification) =
 struct
     module OriginalFunAlgorithm = Original.TypeAlgorithm(L)
+
+
     module Cache = Hashtbl.Make(struct
             type t = int [@@deriving compare,hash,sexp]
           end)
+
 
     (* Reporting facilities, this is unneeded in a real-world incrementalizer *)
     module IncrementalReport = struct
@@ -60,9 +63,12 @@ struct
                 (r.cache_miss_inc+r.cache_miss_none)
     end
 
+
     let report = IncrementalReport.create
 
+
     let get_empty_cache sz : (L.context ref * L.res) Cache.t = Cache.create sz
+
 
     let build_cache t gamma (cache : (L.context ref * L.res) Cache.t) =
         (* Same Original.TypeAlgorithm.typing but returns an aAST *)
@@ -86,41 +92,11 @@ struct
         let aast = compute_aast gamma t in
             _build_cache aast t gamma cache; aast
 
+
     let typing ?threshold (cache : (L.context ref * L.res) Cache.t) gamma t =
         let compatcall_cnt = ref 0 in
-        (* This is the case in which no threshold is considered *)
-        let rec _typing (cache : (L.context ref * L.res) Cache.t) gamma t =
-            (let miss (cache : (L.context ref * L.res) Cache.t) hash gamma =
-                (match Cache.find cache hash with
-                | None -> None (* This is a miss, w/o any corresponding element in cache *)
-                | Some (gamma', res') ->
-                    if L.compat !gamma !gamma' t then
-                        Some res' (* This is a hit! *)
-                    else
-                        None
-                ) in
-            let (hash, fvs) = L.term_getannot t in
-            let orig_call () = (let r = OriginalFunAlgorithm.typing gamma t in Cache.set cache hash (ref gamma, r); r) in
-            (let ts = L.get_sorted_children t in
-                match ts with
-                | [] -> orig_call () (* Call the original algorithm and update the cache *)
-                | _ -> (* This is the inductive case, either a hit or a miss *)
-                    (match miss cache hash (ref gamma) with
-                    | None -> (* This is a miss *)
-                        (
-                        (* Here's the difference w. paper:
-                            copy the cache and update it only in the end to be faithful to the paper! *)
-                        let rs = List.fold_left ts ~init:[] ~f:(fun rs (i, ti) -> rs@[_typing cache (L.tr i ti t gamma rs) ti]) in
-                            (match L.checkjoin t gamma rs with
-                            | None ->
-                                List.iter ts ~f:(fun t -> Printf.printf "child (%d) - %s \n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t)));
-                                List.iter rs ~f:(fun r -> Printf.printf "child res: %s\n" (L.string_of_type r));
-                                failwith "Incremental CheckJoin failed!"
-                            | Some res -> Cache.set cache hash (ref gamma, res); res))
-                    | Some res -> res))) in
-        (* This is the case in which a threshold was specified *)
-        let rec _typing_w_threshold threshold (cache : (L.context ref * L.res) Cache.t) gamma t =
-            (let miss (cache : (L.context ref * L.res) Cache.t) hash gamma =
+        let rec _typing (threshold_fn : (unit -> bool) -> (unit -> L.res) -> (unit -> L.res) -> L.res) (cache : (L.context ref * L.res) Cache.t) gamma t =
+            let miss (cache : (L.context ref * L.res) Cache.t) hash gamma =
                 (match Cache.find cache hash with
                 | None -> None (* This is a miss, w/o any corresponding element in cache *)
                 | Some (gamma', res') ->
@@ -128,12 +104,10 @@ struct
                     if L.compat !gamma !gamma' t then
                         Some res' (* This is a hit! *)
                     else
-                        None
-                ) in
+                        None) in
             let (hash, fvs) = L.term_getannot t in
             let orig_call () = (let r = OriginalFunAlgorithm.typing gamma t in Cache.set cache hash (ref gamma, r); r) in
-            if !compatcall_cnt >= threshold then orig_call ()
-            else
+            let inc_call () =
                 (let ts = L.get_sorted_children t in
                     match ts with
                     | [] -> orig_call () (* Call the original algorithm and update the cache *)
@@ -143,60 +117,22 @@ struct
                             (
                             (* Here's the difference w. paper:
                                 copy the cache and update it only in the end to be faithful to the paper! *)
-                            let rs = List.fold_left ts ~init:[] ~f:(fun rs (i, ti) -> rs@[_typing_w_threshold threshold cache (L.tr i ti t gamma rs) ti]) in
+                            let rs = List.fold_left ts ~init:[] ~f:(fun rs (i, ti) -> rs@[_typing threshold_fn cache (L.tr i ti t gamma rs) ti]) in
                                 (match L.checkjoin t gamma rs with
                                 | None ->
                                     List.iter ts ~f:(fun t -> Printf.printf "child (%d) - %s \n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t)));
                                     List.iter rs ~f:(fun r -> Printf.printf "child res: %s\n" (L.string_of_type r));
-                                    failwith "Incremental CheckJoin failed!"
+                                    failwith "(incrementalizer.ml) Error: incremental CheckJoin failed!"
                                 | Some res -> Cache.set cache hash (ref gamma, res); res))
-                        | Some res -> res)))
+                        | Some res -> res)) in
+            threshold_fn (fun () -> !compatcall_cnt >= Option.value_exn threshold) orig_call inc_call
         in
         match threshold with
-            | Some thresh -> _typing_w_threshold thresh cache gamma t
-            | None -> _typing cache gamma t
+            | Some thresh -> _typing (fun c e1 e2 -> if c () then e1 () else e2 ()) cache gamma t
+            | None -> _typing (fun _ _ e2 -> e2 ()) cache gamma t
 
     let typing_w_report ?threshold nc (cache : (L.context ref * L.res) Cache.t) gamma t =
-        let rec _typing (cache : (L.context ref * L.res) Cache.t) gamma (t : (int * VarSet.t) L.term) (at : (IncrementalReport.node_visit_type ref) L.term) =
-            let miss (cache : (L.context ref * L.res) Cache.t) hash gamma =
-                (match Cache.find cache hash with
-                | None ->
-                    IncrementalReport.register_miss_none report; None (* This is a miss, w/o any corresponding element in cache *)
-                | Some (gamma', res') ->
-                    if L.compat !gamma !gamma' t then
-                        (IncrementalReport.register_hit report; Some res') (* This is a hit! *)
-                    else
-                        (IncrementalReport.register_miss_incomp report; None)) in
-            let ts = L.get_sorted_children t in
-            let (hash, fvs) = L.term_getannot t in
-            let orig_call () =
-                (let r = OriginalFunAlgorithm.typing gamma t in
-                    IncrementalReport.register_orig_call report;
-                    (L.term_getannot at) := IncrementalReport.Orig;
-                    Cache.set cache hash (ref gamma, r); r)
-                in
-                match ts with
-                    | [] -> orig_call () (* Call the original algorithm and update the cache *)
-                    | _ -> (* This is the inductive case, either a hit or a miss *)
-                        (match miss cache hash (ref gamma) with
-                        | None -> (* This is a miss *)
-                            (
-                            (* Here's the difference w. paper:
-                                copy the cache and update it only in the end to be faithful to the paper! *)
-                            let ats = L.get_sorted_children at in
-                            let cats = List.zip_exn ts ats in
-                            L.term_getannot at := IncrementalReport.Miss;
-                            let rs = List.fold_left cats ~init:[] ~f:(fun rs ((i, ti), (_, ati)) -> rs@[_typing cache (L.tr i ti t gamma rs) ti ati]) in
-                                (match L.checkjoin t gamma rs with
-                                | None ->
-                                    List.iter ts ~f:(fun t -> Printf.printf "child (%d) - %s \n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t)));
-                                    List.iter rs ~f:(fun r -> Printf.printf "child res: %s\n" (L.string_of_type r));
-                                    failwith "Incremental CheckJoin failed!"
-                                | Some res -> Cache.set cache hash (ref gamma, res); res))
-                        | Some res ->
-                            L.term_getannot at := IncrementalReport.Hit;
-                            res) in
-        let rec _typing_w_threshold threshold (cache : (L.context ref * L.res) Cache.t) gamma (t : (int * VarSet.t) L.term) (at : (IncrementalReport.node_visit_type ref) L.term) =
+        let rec _typing (threshold_fn : (unit -> bool) -> (unit -> L.res) -> (unit -> L.res) -> L.res) (cache : (L.context ref * L.res) Cache.t) gamma (t : (int * VarSet.t) L.term) (at : (IncrementalReport.node_visit_type ref) L.term) =
             let miss (cache : (L.context ref * L.res) Cache.t) hash gamma =
                 (match Cache.find cache hash with
                 | None ->
@@ -209,14 +145,12 @@ struct
                         (IncrementalReport.register_miss_incomp report; None)) in
             let ts = L.get_sorted_children t in
             let (hash, fvs) = L.term_getannot t in
-            let orig_call () =
-                (let r = OriginalFunAlgorithm.typing gamma t in
+            let orig_call () = (let r = OriginalFunAlgorithm.typing gamma t in
                     IncrementalReport.register_orig_call report;
                     (L.term_getannot at) := IncrementalReport.Orig;
                     Cache.set cache hash (ref gamma, r); r)
                 in
-                if report.cache_miss_inc + report.cache_hit >= threshold then (Printf.eprintf "orig: %d %d\n" report.cache_miss_none report.cache_miss_inc; flush stderr; orig_call ())
-                else
+            let inc_call () =
                     (match ts with
                     | [] -> orig_call () (* Call the original algorithm and update the cache *)
                     | _ -> (* This is the inductive case, either a hit or a miss *)
@@ -228,7 +162,7 @@ struct
                             let ats = L.get_sorted_children at in
                             let cats = List.zip_exn ts ats in
                             L.term_getannot at := IncrementalReport.Miss;
-                            let rs = List.fold_left cats ~init:[] ~f:(fun rs ((i, ti), (_, ati)) -> rs@[_typing_w_threshold threshold cache (L.tr i ti t gamma rs) ti ati]) in
+                            let rs = List.fold_left cats ~init:[] ~f:(fun rs ((i, ti), (_, ati)) -> rs@[_typing threshold_fn cache (L.tr i ti t gamma rs) ti ati]) in
                                 (match L.checkjoin t gamma rs with
                                 | None ->
                                     List.iter ts ~f:(fun t -> Printf.printf "child (%d) - %s \n" (fst t) (L.string_of_term (fun _ _ -> ()) (snd t)));
@@ -237,15 +171,17 @@ struct
                                 | Some res -> Cache.set cache hash (ref gamma, res); res))
                         | Some res ->
                             L.term_getannot at := IncrementalReport.Hit;
-                            res))
+                            res)) in
+            threshold_fn
+                (fun () -> report.cache_miss_inc + report.cache_hit >= Option.value_exn threshold)
+                (fun () -> Printf.eprintf "orig: %d %d\n" report.cache_miss_none report.cache_miss_inc; flush stderr; orig_call ())
+                inc_call
         in
             IncrementalReport.reset report;
             IncrementalReport.set_nc nc report;
             let annot_t = OriginalFunAlgorithm.term_map (fun ct -> ref IncrementalReport.NoVisit) t in
-            let res = (
-                match threshold with
-                    | Some thresh -> _typing_w_threshold thresh
-                    | None -> _typing
-            ) cache gamma t annot_t in
+            let res = (match threshold with
+                | Some thresh -> _typing (fun c e1 e2 -> if c () then e1 () else e2 ()) cache gamma t annot_t
+                | None -> _typing (fun _ _ e2 -> e2 ()) cache gamma t annot_t) in
                 report.annot_t <- Some annot_t; res
 end
