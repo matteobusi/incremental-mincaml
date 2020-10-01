@@ -122,7 +122,7 @@ let throughput_original_vs_inc
   e =
     let nc = Generator.nodecount e in
     (* Just compute the cache once: *)
-    let experiment_cache = IncrementalFunAlgorithm.get_empty_cache ~size:1 () in
+    let experiment_cache = IncrementalFunAlgorithm.get_empty_cache () in
       ignore (IncrementalFunAlgorithm.build_cache e gamma_init experiment_cache);
       let oldsz = IncrementalFunAlgorithm.Cache.length experiment_cache in
       cache_invalidator experiment_cache e invalidator_param;
