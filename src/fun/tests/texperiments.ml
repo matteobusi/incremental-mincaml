@@ -17,8 +17,7 @@ let _ =
     let len = List.length depth_list in
     Printf.printf "name, fvc, invalidation_parameter, nodecount, diffsz, threshold, rate\n"; flush stdout;
     List.iteri ~f:(fun i depth -> (
-      (* let fv_c_list =  1 :: Generator.gen_list (Generator.pow 2 7) (Generator.pow 2 (depth-1)) (fun n -> n*2) in *)
-      let fv_c_list =  [512] in
+      let fv_c_list =  1 :: Generator.gen_list (Generator.pow 2 7) (Generator.pow 2 (depth-1)) (fun n -> n*2) in
       let inv_depth_list = [1; 2; 3] @ Generator.gen_list 4 (depth - 1) (fun n -> n + 2) in
       Printf.eprintf "[%d/%d] depth=%d ...\n" (i+1) len depth;
       flush stderr;
