@@ -79,7 +79,7 @@ To do that the incremental algorithm visited 8 nodes of the syntax tree (out of 
 
 To run the test suite, simply compile the executable as described above and then run the executable:
 ```
-$ ./test.native
+$ ./unittest.native
 ```
 
 ## Running the time experiments #
