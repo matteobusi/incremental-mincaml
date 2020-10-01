@@ -172,40 +172,40 @@ let rec mk_graph i e ig =
     in g'
 
 let analyze_expr (file : string) (filem : string) =
-    Printf.printf "Analyzing: Orig: %s ... Mod: %s ...\n" file filem; flush stdout;
-    let channel, channelm = open_in file, open_in filem in
-    Printf.printf "Lexing "; flush stdout;
+    Printf.printf "Analyzing: Orig: %s ... Mod: %s ...\n" file filem; Out_channel.flush stdout;
+    let channel, channelm = In_channel.create ~binary:false file, In_channel.create ~binary:false filem in
+    Printf.printf "Lexing "; Out_channel.flush stdout;
     let lexbuf, lexbufm = Lexing.from_channel channel, Lexing.from_channel channelm in
-    Printf.printf "... done\n"; flush stdout;
-    Printf.printf "Parsing "; flush stdout;
+    Printf.printf "... done\n"; Out_channel.flush stdout;
+    Printf.printf "Parsing "; Out_channel.flush stdout;
     let e, em = (Parser.exp Lexer.token lexbuf), (Parser.exp Lexer.token lexbufm) in
-    Printf.printf "... done\n"; flush stdout;
-    Printf.printf "Annotating original "; flush stdout;
+    Printf.printf "... done\n"; Out_channel.flush stdout;
+    Printf.printf "Annotating original "; Out_channel.flush stdout;
     (* let e_hf = (Id.counter := 0; OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) e) in *)
     let e_hf = (annotate_fv (OriginalFunAlgorithm.term_map (fun e -> compute_hash e) e)) in
-    Printf.printf "... - done (root hash: %d)\n" (compute_hash e); flush stdout;
-    Printf.printf "Annotating modified "; flush stdout;
+    Printf.printf "... - done (root hash: %d)\n" (compute_hash e); Out_channel.flush stdout;
+    Printf.printf "Annotating modified "; Out_channel.flush stdout;
     let em_hf = (annotate_fv (OriginalFunAlgorithm.term_map (fun e -> compute_hash e) em)) in
-    Printf.printf "... - done (root hash: %d)\n" (compute_hash em); flush stdout;
-    Printf.printf "Initial typing environments "; flush stdout;
+    Printf.printf "... - done (root hash: %d)\n" (compute_hash em); Out_channel.flush stdout;
+    Printf.printf "Initial typing environments "; Out_channel.flush stdout;
     let gamma_init, gamma_initm =
       (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())),
       (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())) in
-    Printf.printf "... done\n"; flush stdout;
+    Printf.printf "... done\n"; Out_channel.flush stdout;
     (* Printf.printf "Program: %s\n" (FunSpecification.FunSpecification.string_of_term (fun f x -> ()) e);
     Printf.printf "Program Mod: %s\n" (FunSpecification.FunSpecification.string_of_term (fun f x -> ()) em); *)
-    Printf.printf "Building the cache "; flush stdout;
+    Printf.printf "Building the cache "; Out_channel.flush stdout;
     let cache = IncrementalFunAlgorithm.get_empty_cache () in
     ignore (IncrementalFunAlgorithm.build_cache e_hf gamma_init cache);
-    Printf.printf "... done\n"; flush stdout;
+    Printf.printf "... done\n"; Out_channel.flush stdout;
     (* IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
     IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount em_hf) IncrementalFunAlgorithm.report; *)
-    Printf.printf "Original typing "; flush stdout;
+    Printf.printf "Original typing "; Out_channel.flush stdout;
     let te = OriginalFunAlgorithm.typing gamma_init e_hf in
-    Printf.printf "... done\n"; flush stdout;
-    Printf.printf "Incremental typing "; flush stdout;
+    Printf.printf "... done\n"; Out_channel.flush stdout;
+    Printf.printf "Incremental typing "; Out_channel.flush stdout;
     let tem = IncrementalFunAlgorithm.typing_w_report (nodecount em_hf) cache gamma_initm em_hf in
-      Printf.printf "... done\n"; flush stdout;
+      Printf.printf "... done\n"; Out_channel.flush stdout;
       Printf.printf "Type: %s - IType: %s\n" (FunSpecification.FunSpecification.string_of_type te) (FunSpecification.FunSpecification.string_of_type tem);
       Printf.printf "%s\n" (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report);
       (match IncrementalFunAlgorithm.report.annot_t with

@@ -174,7 +174,7 @@ struct
                             res)) in
             threshold_fn
                 (fun () -> report.cache_miss_inc + report.cache_hit >= Option.value_exn threshold)
-                (fun () -> Printf.eprintf "orig: %d %d\n" report.cache_miss_none report.cache_miss_inc; flush stderr; orig_call ())
+                (fun () -> Printf.eprintf "orig: %d %d\n" report.cache_miss_none report.cache_miss_inc; Out_channel.flush stderr; orig_call ())
                 inc_call
         in
             IncrementalReport.reset report;

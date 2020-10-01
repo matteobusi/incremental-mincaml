@@ -62,7 +62,7 @@ let _ =
     let len = List.length param_list in
       List.iteri ~f:(fun i (fv_c, depth) -> (
         Printf.eprintf "[%d/%d] --- depth=%d; fv_c=%d;\n" (i+1) len depth fv_c;
-        flush stderr;
+        Out_channel.flush stderr;
         let e = Generator.ibop_gen_ast depth "+" fv_c in
         let lo = register ("orig_" ^ (string_of_int depth) ^ "_" ^ (string_of_int fv_c)) in
         let li = register ("inc_" ^ (string_of_int depth) ^ "_" ^ (string_of_int fv_c)) in

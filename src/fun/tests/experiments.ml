@@ -151,7 +151,7 @@ let throughput_original_vs_inc
 
 let print_csv (mr_list : MinimalResult.t list) =
   List.iter
-  ~f:(fun (mr : MinimalResult.t) -> Printf.printf "%s, %d, %d, %d, %d, %d, %f\n" mr.name mr.fvc mr.invalidation_parameter mr.nodecount mr.diffsz mr.threshold mr.rate; flush stdout) mr_list
+  ~f:(fun (mr : MinimalResult.t) -> Printf.printf "%s, %d, %d, %d, %d, %d, %f\n" mr.name mr.fvc mr.invalidation_parameter mr.nodecount mr.diffsz mr.threshold mr.rate; Out_channel.flush stdout) mr_list
 
 (* FIXME: duplicate from main.ml; Is there a common place to put this one into? *)
 let rec annotate_fv e =

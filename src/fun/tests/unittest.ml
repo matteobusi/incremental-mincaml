@@ -63,7 +63,7 @@ let rec build_annot_list te = match te with
   | Put (e1, e2, e3, annot) -> annot :: List.append (build_annot_list e1) (List.append (build_annot_list e2) (build_annot_list e3));;
 
 let inc_analyze_expr (file : string) =
-  let channel = open_in file in
+  let channel = In_channel.create ~binary:false file in
   let lexbuf = Lexing.from_channel channel in
   let e = (Parser.exp Lexer.token lexbuf) in
   let e_hf = (Id.counter := 0; OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) e) in
@@ -74,7 +74,7 @@ let inc_analyze_expr (file : string) =
     (te, aast, cache)
 
 let analyze_and_report (file : string) (filem : string) =
-  let channel, channelm = open_in file, open_in filem in
+  let channel, channelm = In_channel.create ~binary:false file, In_channel.create ~binary:false filem in
   let lexbuf = Lexing.from_channel channel in
   let e = Parser.exp Lexer.token lexbuf in
   let e_hf = (Id.counter := 0; OriginalFunAlgorithm.term_map (fun e -> (compute_hash e, compute_fv e)) e) in
