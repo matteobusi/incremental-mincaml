@@ -188,7 +188,9 @@ let analyze_expr (file : string) (filem : string) =
     let em_hf = (annotate_fv (OriginalFunAlgorithm.term_map (fun e -> compute_hash e) em)) in
     Printf.printf "... - done (root hash: %d)\n" (compute_hash em); flush stdout;
     Printf.printf "Initial typing environments "; flush stdout;
-    let gamma_init, gamma_initm = (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())), (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())) in
+    let gamma_init, gamma_initm =
+      (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())),
+      (FunContext.add_list (initial_gamma_list) (FunContext.get_empty_context ())) in
     Printf.printf "... done\n"; flush stdout;
     (* Printf.printf "Program: %s\n" (FunSpecification.FunSpecification.string_of_term (fun f x -> ()) e);
     Printf.printf "Program Mod: %s\n" (FunSpecification.FunSpecification.string_of_term (fun f x -> ()) em); *)

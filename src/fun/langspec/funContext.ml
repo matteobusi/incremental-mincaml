@@ -6,7 +6,7 @@ include Hashtbl.Make
     [@@deriving compare, sexp, hash]
 end)
 
-let get_empty_context () = create ()
+let get_empty_context ?size = create ~growth_allowed:true ?size:size
 
 let add x t env = let envc = copy env in ignore (add envc x t); envc
 let add_list xys env = List.fold_left xys ~init:env ~f:(fun env (x, y) -> add x y env)

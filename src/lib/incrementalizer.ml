@@ -67,7 +67,7 @@ struct
     let report = IncrementalReport.create
 
 
-    let get_empty_cache sz : (L.context ref * L.res) Cache.t = Cache.create sz
+    let get_empty_cache ?(size=4096) () : (L.context ref * L.res) Cache.t = Cache.create ~growth_allowed:false ~size:size ()
 
 
     let build_cache t gamma (cache : (L.context ref * L.res) Cache.t) =
