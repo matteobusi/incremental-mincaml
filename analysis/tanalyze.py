@@ -62,7 +62,7 @@ def plot_on_pdf (filename, res, interesting_pairs):
 
 
                 for t in add_res_inc["threshold"].unique():
-                    if t != -1 and ((nodecount, fvc) in interesting_pairs):
+                    if t != -1 and ((np.log2(nodecount+1), fvc) in interesting_pairs):
                         add_res_inc[add_res_inc["threshold"] == t].drop(["threshold"], axis=1).plot(x="diffsz", y="rate", ax=ax, marker='+', label=inc_n + " (T = " + str(t) + ")", linewidth=1, linestyle='dotted') #
 
                 add_res_orig.plot(x="diffsz", y="rate", ax=ax, marker='*', linewidth=1, color="blue", label=orig_n, linestyle='dashed') # BLUE
@@ -108,4 +108,4 @@ if __name__ == "__main__":
         tabulate(res, [(14,1), (14, 2**7), (14, 2**9), (14, 2**11), (14, 2**13)])
         tabulate(res, [(12,1), (12, 2**7), (12, 2**9), (12, 2**11)])
 
-        plot_on_pdf("{}/".format(sys.argv[2]) + "tres_{}_{}.pdf", res)
+        plot_on_pdf("{}/".format(sys.argv[2]) + "tres_{}_{}.pdf", res, [(16, 2**15), (14, 2**13), (12, 2**11)])
