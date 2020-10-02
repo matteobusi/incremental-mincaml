@@ -211,7 +211,7 @@ let analyze_expr (file : string) (filem : string) =
       (match IncrementalFunAlgorithm.report.annot_t with
         | Some at ->
           let file = Stdlib.open_out_bin "incremental_visual.dot" in
-            Printf.printf "Printing tree report ...";
+            Printf.printf "Printing graphical tree report ... ";
             Dot.output_graph file (mk_graph 0 at G.empty);
             Printf.printf "done\n"
         | _ -> ())
