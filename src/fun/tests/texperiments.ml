@@ -34,7 +34,7 @@ let _ =
             Out_channel.flush stderr;
             let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
             List.iteri ~f:(fun l t ->
-              Printf.eprintf "\t\t[%d/%d] threshold=%d ... " (l+1) (List.length t_list) (Option.value t ~default:(-1));
+              Printf.eprintf "\t\t\t[%d/%d] threshold=%d ... " (l+1) (List.length t_list) (Option.value t ~default:(-1));
               Out_channel.flush stderr;
               let orig_vs_inc_res =
                 Experiments.throughput_original_vs_inc

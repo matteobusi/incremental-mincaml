@@ -35,14 +35,23 @@ def tabulate(res, interesting_pairs):
             else:
                 print("${}$ & $2^{{{}}}$ & ${:.2f}$ & ${:.2f}$ & ${:.2f}$\\\\".format(depth, fvc.bit_length() - 1, orig_r, einc_r, ratio))
 
-def plot_on_pdf (filename, res):
+def plot_on_pdf (filename, res, interesting_pairs):
     for nodecount in res["nodecount"].unique():
         res_2 = res[res["nodecount"] == nodecount]
         for fvc in res_2["fvc"].unique():
             res_3 = res_2[res_2["fvc"] == fvc]
             with PdfPages(filename.format(nodecount, fvc)) as pdf:
                 fig, ax = plt.subplots()
-                add_res_orig = res_3[res_3["name"].str.startswith(orig_n)].drop(["name", "nodecount", "fvc"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
+
+                from matplotlib.cm import get_cmap
+
+                name = "tab20"
+                cmap = get_cmap(name)  # type: matplotlib.colors.ListedColormap
+                colors = cmap.colors  # type: list
+                ax.set_prop_cycle(color=colors)
+
+
+                add_res_orig = res_3[res_3["name"].str.startswith(orig_n)].drop(["name", "nodecount", "fvc", "threshold"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
                 add_res_inc  = res_3[res_3["name"].str.startswith(inc_n)].drop(["name", "nodecount", "fvc"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
 
                 # add_res_orig = add_res_orig.drop(["invalidation_parameter"], axis=1)
@@ -52,8 +61,12 @@ def plot_on_pdf (filename, res):
                 add_res_inc["invalidation_parameter"] = np.log2(nodecount+1) - add_res_inc["invalidation_parameter"]
 
 
-                add_res_orig.plot(x="invalidation_parameter", y="rate", ax=ax, label=orig_n, marker='*', color='blue', linewidth=1, linestyle='dashed') # BLUE
-                add_res_inc.plot(x="invalidation_parameter", y="rate", ax=ax, label=inc_n, marker='d', color='orange', linewidth=1) # ORANGE
+                for t in add_res_inc["threshold"].unique():
+                    if t != -1 and ((nodecount, fvc) in interesting_pairs):
+                        add_res_inc[add_res_inc["threshold"] == t].drop(["threshold"], axis=1).plot(x="diffsz", y="rate", ax=ax, marker='+', label=inc_n + " (T = " + str(t) + ")", linewidth=1, linestyle='dotted') #
+
+                add_res_orig.plot(x="diffsz", y="rate", ax=ax, marker='*', linewidth=1, color="blue", label=orig_n, linestyle='dashed') # BLUE
+                add_res_inc[add_res_inc["threshold"] == -1].drop(["threshold"], axis=1).plot(x="diffsz", y="rate", ax=ax, marker='d', label=inc_n, color="orange", linewidth=1) # ORANGE
 
                 ymax = max (
                     [
@@ -72,6 +85,8 @@ def plot_on_pdf (filename, res):
                 plt.yticks(np.arange(ymin, ymax + 1, (ymax-ymin+1)/10))
                 plt.xlabel("$\log ($ size of the diff sub-tree $ + 1)$")
                 plt.ylabel("throughput (re-typings/$s$)")
+
+                plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0.)
 
                 pdf.savefig()
                 plt.close()
