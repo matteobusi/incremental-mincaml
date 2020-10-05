@@ -16,7 +16,7 @@ struct
 
     (* Reporting facilities, this is unneeded in a real-world incrementalizer *)
     module IncrementalReport = struct
-        type node_visit_type = Hit | Orig | Miss | NoVisit
+        type node_visit_type = Hit | Orig | MissNone | MissIncompatible | NoVisit
 
         type report_data = {
             mutable cache_miss_inc : int;
@@ -133,16 +133,16 @@ struct
 
     let typing_w_report ?threshold nc (cache : (L.context ref * L.res) Cache.t) gamma t =
         let rec _typing (threshold_fn : (unit -> bool) -> (unit -> L.res) -> (unit -> L.res) -> L.res) (cache : (L.context ref * L.res) Cache.t) gamma (t : (int * VarSet.t) L.term) (at : (IncrementalReport.node_visit_type ref) L.term) =
-            let miss (cache : (L.context ref * L.res) Cache.t) hash gamma =
+            let miss (cache : (L.context ref * L.res) Cache.t) hash gamma annot_at =
                 (match Cache.find cache hash with
                 | None ->
-                    IncrementalReport.register_miss_none report; None (* This is a miss, w/o any corresponding element in cache *)
+                    annot_at := IncrementalReport.MissNone; IncrementalReport.register_miss_none report; None (* This is a miss, w/o any corresponding element in cache *)
                 | Some (gamma', res') ->
                     (* TODO: Compare count should be removed *)
                     if L.compat !gamma !gamma' t then
-                        (IncrementalReport.register_hit report; Some res') (* This is a hit! *)
+                        (annot_at := IncrementalReport.Hit; IncrementalReport.register_hit report; Some res') (* This is a hit! *)
                     else
-                        (IncrementalReport.register_miss_incomp report; None)) in
+                        (annot_at := IncrementalReport.MissIncompatible; IncrementalReport.register_miss_incomp report; None)) in
             let ts = L.get_sorted_children t in
             let (hash, fvs) = L.term_getannot t in
             let orig_call () = (let r = OriginalFunAlgorithm.typing gamma t in
@@ -154,14 +154,13 @@ struct
                     (match ts with
                     | [] -> orig_call () (* Call the original algorithm and update the cache *)
                     | _ -> (* This is the inductive case, either a hit or a miss *)
-                        (match miss cache hash (ref gamma) with
+                        (match miss cache hash (ref gamma) (L.term_getannot at) with
                         | None -> (* This is a miss *)
                             (
                             (* Here's the difference w. paper:
                                 copy the cache and update it only in the end to be faithful to the paper! *)
                             let ats = L.get_sorted_children at in
                             let cats = List.zip_exn ts ats in
-                            L.term_getannot at := IncrementalReport.Miss;
                             let rs = List.fold_left cats ~init:[] ~f:(fun rs ((i, ti), (_, ati)) -> rs@[_typing threshold_fn cache (L.tr i ti t gamma rs) ti ati]) in
                                 (match L.checkjoin t gamma rs with
                                 | None ->
@@ -170,7 +169,6 @@ struct
                                     failwith "Incremental CheckJoin failed!"
                                 | Some res -> Cache.set cache hash (ref gamma, res); res))
                         | Some res ->
-                            L.term_getannot at := IncrementalReport.Hit;
                             res)) in
             threshold_fn
                 (fun () -> report.cache_miss_inc + report.cache_hit >= Option.value_exn threshold)

@@ -133,6 +133,8 @@ end
 
 module G = Graph.Persistent.Digraph.Concrete (Node)
 
+let int_of_rgb r g b = 65536*r + 256*g + b
+
 module Dot = Graph.Graphviz.Dot(struct
     include G
     let edge_attributes (a, b) = []
@@ -141,10 +143,11 @@ module Dot = Graph.Graphviz.Dot(struct
     let vertex_attributes v =
       (* if List.mem (fst v) (IncrementalFunAlgorithm.IncrementalReport.get_miss_list IncrementalFunAlgorithm.report) then *)
       (match !(snd (snd v)) with
-        | IncrementalFunAlgorithm.IncrementalReport.NoVisit -> [`Shape `Box; `Fillcolor 16777215; `Style `Filled]
-        | IncrementalFunAlgorithm.IncrementalReport.Orig -> [`Shape `Box; `Fillcolor 65535; `Style `Filled]
-        | IncrementalFunAlgorithm.IncrementalReport.Hit -> [`Shape `Box; `Fillcolor 65280; `Style `Filled]
-        | IncrementalFunAlgorithm.IncrementalReport.Miss -> [`Shape `Box; `Fillcolor 16711680; `Style `Filled])
+        | IncrementalFunAlgorithm.IncrementalReport.NoVisit -> [`Shape `Box; `Fillcolor (int_of_rgb 255 255 255); `Style `Filled]
+        | IncrementalFunAlgorithm.IncrementalReport.Orig -> [`Shape `Box; `Fillcolor (int_of_rgb 0 255 255); `Style `Filled]
+        | IncrementalFunAlgorithm.IncrementalReport.Hit -> [`Shape `Box; `Fillcolor (int_of_rgb 0 255 0); `Style `Filled]
+        | IncrementalFunAlgorithm.IncrementalReport.MissNone -> [`Shape `Box; `Fillcolor (int_of_rgb 255 0 0); `Style `Filled]
+        | IncrementalFunAlgorithm.IncrementalReport.MissIncompatible -> [`Shape `Box; `Fillcolor (int_of_rgb 255 165 0); `Style `Filled])
     let vertex_name v = fst (snd v)
     let default_vertex_attributes _ = []
     let graph_attributes _ = []
@@ -156,7 +159,8 @@ let string_of_node_visit_type t = match t with
   | IncrementalFunAlgorithm.IncrementalReport.NoVisit -> "NoVisit"
   | IncrementalFunAlgorithm.IncrementalReport.Orig -> "Orig"
   | IncrementalFunAlgorithm.IncrementalReport.Hit -> "Hit"
-  | IncrementalFunAlgorithm.IncrementalReport.Miss -> "Miss"
+  | IncrementalFunAlgorithm.IncrementalReport.MissNone -> "MissNone"
+  | IncrementalFunAlgorithm.IncrementalReport.MissIncompatible -> "MissIncompatible"
 
 let rec mk_graph i e ig =
   let use_cnt () = incr cnt; !cnt in
