@@ -6,7 +6,7 @@ open VarSet
 module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.FunSpecification)
 
 let _ =
-   if Array.length Sys.argv < 5 then
+   if Array.length Sys.argv < 4 then
     Printf.eprintf "%s quota min_depth max_depth\n" Sys.argv.(0)
   else
      let quota, min_depth, max_depth =
