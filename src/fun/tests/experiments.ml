@@ -129,16 +129,19 @@ let throughput_original_vs_inc
       let diffsz = oldsz - IncrementalFunAlgorithm.Cache.length experiment_cache in
       let measures = measure
         ~run_config:(Core_bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
-        [
-          Stest.create
+        ((if Option.is_none threshold then
+          []
+        else
+          [Stest.create
             ~name:(orig_n ^ ":" ^ (string_of_int invalidator_param))
             (fun () -> IncrementalFunAlgorithm.Cache.copy experiment_cache)
             (fun _ -> OriginalFunAlgorithm.typing gamma_init e);
-          Stest.create ~name:(inc_n ^ ":" ^ (string_of_int invalidator_param))
+          ]
+        )
+          @[Stest.create ~name:(inc_n ^ ":" ^ (string_of_int invalidator_param))
           (fun () -> IncrementalFunAlgorithm.Cache.copy experiment_cache)
           (fun cache ->
-            incremental_typing_fun ?threshold:threshold cache gamma_init e);
-        ] in
+            incremental_typing_fun ?threshold:threshold cache gamma_init e)]) in
       let results = List.map ~f:(fun m -> Analysis.analyze m Analysis_config.default) measures in
       let results = List.filter_map
         ~f:(fun (a : Core_bench.Analysis_result.t Core.Or_error.t) -> match a with

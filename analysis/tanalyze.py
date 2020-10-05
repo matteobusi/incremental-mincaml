@@ -24,8 +24,15 @@ rcParams.update({'figure.autolayout': True})
 
 def tabulate(res, interesting_pairs):
     for (depth, fvc) in interesting_pairs:
-        id_res_orig = res[(res["name"].str.startswith(orig_n)) & (res["nodecount"] == 2**depth - 1) & (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc"], axis=1).groupby("nodecount").mean().reset_index()
-        id_res_einc = res[(res["name"].str.startswith(einc_n)) & (res["nodecount"] == 2**depth - 1) & (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc"], axis=1).groupby("nodecount").mean().reset_index()
+        id_res_orig = res[
+            (res["name"].str.startswith(orig_n)) &
+            (res["nodecount"] == 2**depth - 1) &
+            (res["fvc"] == fvc) &
+            (res["threshold"] == -1)].drop(["invalidation_parameter", "name", "fvc" ,"threshold"], axis=1).groupby("nodecount").mean().reset_index()
+        id_res_einc = res[
+            (res["name"].str.startswith(einc_n)) &
+            (res["nodecount"] == 2**depth - 1) &
+            (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc"], axis=1).groupby(["nodecount", "threshold"]).mean().reset_index()
 
         if len(id_res_orig.index) == 1:
             orig_r, einc_r = id_res_orig.iloc[0]["rate"], id_res_einc.iloc[0]["rate"]
@@ -50,9 +57,11 @@ def plot_on_pdf (filename, res, interesting_pairs):
                 colors = cmap.colors  # type: list
                 ax.set_prop_cycle(color=colors)
 
-
-                add_res_orig = res_3[res_3["name"].str.startswith(orig_n)].drop(["name", "nodecount", "fvc", "threshold"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
-                add_res_inc  = res_3[res_3["name"].str.startswith(inc_n)].drop(["name", "nodecount", "fvc"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
+                add_res_orig = res_3[
+                    res_3["name"].str.startswith(orig_n)].drop(["name", "nodecount", "fvc", "threshold"], axis=1).groupby(["invalidation_parameter"]).mean().reset_index()
+                add_res_inc = res_3[
+                    res_3["name"].str.startswith(inc_n)
+                    ].drop(["name", "nodecount", "fvc"], axis=1).groupby(["invalidation_parameter", "threshold"]).mean().reset_index()
 
                 # add_res_orig = add_res_orig.drop(["invalidation_parameter"], axis=1)
                 # add_res_inc = add_res_inc.drop(["invalidation_parameter"], axis=1)
@@ -60,13 +69,12 @@ def plot_on_pdf (filename, res, interesting_pairs):
                 add_res_orig["invalidation_parameter"] = np.log2(nodecount+1) - add_res_orig["invalidation_parameter"]
                 add_res_inc["invalidation_parameter"] = np.log2(nodecount+1) - add_res_inc["invalidation_parameter"]
 
-
                 for t in add_res_inc["threshold"].unique():
                     if t != -1 and ((np.log2(nodecount+1), fvc) in interesting_pairs):
-                        add_res_inc[add_res_inc["threshold"] == t].drop(["threshold"], axis=1).plot(x="diffsz", y="rate", ax=ax, marker='+', label=inc_n + " (T = " + str(t) + ")", linewidth=1, linestyle='dotted') #
+                        add_res_inc[add_res_inc["threshold"] == t].drop(["threshold"], axis=1).plot(x="invalidation_parameter", y="rate", ax=ax, marker='+', label=inc_n + " (T = " + str(t) + ")", linewidth=1, linestyle='dotted') #
 
-                add_res_orig.plot(x="diffsz", y="rate", ax=ax, marker='*', linewidth=1, color="blue", label=orig_n, linestyle='dashed') # BLUE
-                add_res_inc[add_res_inc["threshold"] == -1].drop(["threshold"], axis=1).plot(x="diffsz", y="rate", ax=ax, marker='d', label=inc_n, color="orange", linewidth=1) # ORANGE
+                add_res_orig.plot(x="invalidation_parameter", y="rate", ax=ax, marker='*', linewidth=1, color="blue", label=orig_n, linestyle='dashed') # BLUE
+                add_res_inc[add_res_inc["threshold"] == -1].drop(["threshold"], axis=1).plot(x="invalidation_parameter", y="rate", ax=ax, marker='d', label=inc_n, color="orange", linewidth=1) # ORANGE
 
                 ymax = max (
                     [
@@ -96,7 +104,15 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         print(("Usage: {} input_file.csv dest_path\n").format(sys.argv[0]))
     else:
-        res = pandas.read_csv(sys.argv[1], sep=", ", engine="python", dtype={'fvc':int, 'invalidation_parameter':int, 'nodecount':int, 'diffsz' : int, 'rate':float})
+        res = pandas.read_csv(sys.argv[1], sep=", ", engine="python", dtype={
+            'name':str,
+            'fvc':int,
+            'invalidation_parameter':int,
+            'nodecount':int,
+            'diffsz':int,
+            'threshold':int,
+            'rate':float})
+
 
         # Just plot for "big" enough trees
         res = res[res["nodecount"] >= 2**8]

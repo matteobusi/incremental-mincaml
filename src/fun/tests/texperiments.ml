@@ -7,13 +7,12 @@ module IncrementalFunAlgorithm = Incrementalizer.TypeAlgorithm(FunSpecification.
 
 let _ =
    if Array.length Sys.argv < 5 then
-    Printf.eprintf "%s quota min_depth max_depth threshold_fractions\n" Sys.argv.(0)
+    Printf.eprintf "%s quota min_depth max_depth\n" Sys.argv.(0)
   else
-     let quota, min_depth, max_depth, threshold_fractions =
+     let quota, min_depth, max_depth =
       Quota.of_string Sys.argv.(1),
       int_of_string Sys.argv.(2),
-      int_of_string Sys.argv.(3),
-      int_of_string Sys.argv.(4) in
+      int_of_string Sys.argv.(3) in
     let depth_list = Generator.gen_list min_depth max_depth (fun n -> n+2) in  (* Seems that big AST have ~20k nodes, cfr. [Erdweg et al.] *)
     let len = List.length depth_list in
     Printf.printf "name, fvc, invalidation_parameter, nodecount, diffsz, threshold, rate\n"; Out_channel.flush stdout;
@@ -28,7 +27,8 @@ let _ =
           let e = Generator.ibop_gen_ast depth "+" fv_c in
           let nc = Generator.nodecount e in
           let initial_gamma_list e = (List.map ~f:(fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
-          let t_list = (List.map ~f:(fun v -> Some v) (0::(Generator.gen_list (nc/threshold_fractions) nc (fun s -> s + int_of_float (0.5 +. float_of_int (nc-1)/. float_of_int (threshold_fractions - 1))))))@[None] in
+          (* A few fixed threshold fractions: 0, 1/50, 1/10, 1/2 and no limit (None) *)
+          let t_list = (List.map ~f:(fun v -> Some v) [0; nc/50; nc/10; nc/2])@[None] in
           List.iteri ~f:(fun k inv_depth ->
             Printf.eprintf "\t\t[%d/%d] inv_depth=%d ... \n" (k+1) (List.length inv_depth_list) inv_depth;
             Out_channel.flush stderr;

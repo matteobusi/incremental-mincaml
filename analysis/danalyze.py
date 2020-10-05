@@ -85,7 +85,14 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         print(("Usage: {} input_file.csv dest_path\n").format(sys.argv[0]))
     else:
-        res = pandas.read_csv(sys.argv[1], sep=", ", engine="python", dtype={'num_fact':int, 'xi_invalidated':int, 'rate':float})
+        res = pandas.read_csv(sys.argv[1], sep=", ", engine="python", dtype={
+            'name':str,
+            'fvc':int,
+            'invalidation_parameter':int,
+            'nodecount':int,
+            'diffsz':int,
+            'threshold':int,
+            'rate':float})
 
         # Create the directory
         os.makedirs("{}".format(sys.argv[2]), exist_ok=True)
