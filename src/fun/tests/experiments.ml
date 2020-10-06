@@ -130,7 +130,7 @@ let throughput_original_vs_inc
       let diffsz = oldsz - IncrementalFunAlgorithm.Cache.length experiment_cache in
       let measures = measure
         ~run_config:(Core_bench.Run_config.create ~quota:quota ~verbosity:verbosity ())
-        ((if Option.is_none threshold then
+        ((if Option.is_some threshold then
           []
         else
           [Stest.create

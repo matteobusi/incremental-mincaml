@@ -69,7 +69,7 @@ def plot_on_pdf (filename, res, interesting_pairs):
                 add_res_inc["invalidation_parameter"] = np.log2(nodecount+1) - add_res_inc["invalidation_parameter"]
 
                 for t in add_res_inc["threshold"].unique():
-                    if t != -1 and ((np.log2(nodecount+1), fvc) in interesting_pairs):
+                    if t != -1 and t in [] and ((np.log2(nodecount+1), fvc) in interesting_pairs):
                         add_res_inc[add_res_inc["threshold"] == t].drop(["threshold"], axis=1).plot(x="invalidation_parameter", y="rate", ax=ax, marker='+', label=inc_n + " (T = " + str(t) + ")", linewidth=1, linestyle='dotted') #
 
                 add_res_orig.plot(x="invalidation_parameter", y="rate", ax=ax, marker='*', linewidth=1, color="blue", label=orig_n, linestyle='dashed') # BLUE

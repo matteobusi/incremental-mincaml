@@ -138,7 +138,6 @@ struct
                 | None ->
                     annot_at := IncrementalReport.MissNone; IncrementalReport.register_miss_none report; None (* This is a miss, w/o any corresponding element in cache *)
                 | Some (gamma', res') ->
-                    (* TODO: Compare count should be removed *)
                     if L.compat !gamma !gamma' t then
                         (annot_at := IncrementalReport.Hit; IncrementalReport.register_hit report; Some res') (* This is a hit! *)
                     else
@@ -181,5 +180,8 @@ struct
             let res = (match threshold with
                 | Some thresh -> _typing (fun c e1 e2 -> if c () then e1 () else e2 ()) cache gamma t annot_t
                 | None -> _typing (fun _ _ e2 -> e2 ()) cache gamma t annot_t) in
-                report.annot_t <- Some annot_t; res
+                report.annot_t <- Some annot_t;
+                Printf.eprintf "Threshold: %d - Compat calls: %d\n" (Option.value ~default:(-1) threshold) (report.cache_miss_inc + report.cache_hit);
+                Out_channel.flush stderr;
+                res
 end
