@@ -110,6 +110,7 @@ let throughput_caches
       let results = Core_bench.Simplified_benchmark.Results.t_of_sexp (Core_bench.Simplified_benchmark.to_sexp results) in
         extract_minimal results nc 0 fvc None
 
+
 let throughput_original_vs_inc
   quota
   verbosity

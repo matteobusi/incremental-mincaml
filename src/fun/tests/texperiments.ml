@@ -27,12 +27,14 @@ let _ =
           let e = Generator.ibop_gen_ast depth "+" fv_c in
           let nc = Generator.nodecount e in
           let initial_gamma_list e = (List.map ~f:(fun id -> (id, TInt)) (VarSet.elements (compute_fv e))) in
-          (* A few fixed threshold fractions: 0, 1/50, 1/10, 1/2 and no limit (None) *)
-          let t_list = (List.map ~f:(fun v -> Some v) [0; nc/50; nc/10; nc/2])@[None] in
+          (* A few fixed threshold: 0, 1/10, 1/2 of expected diff size and no limit (None) *)
           List.iteri ~f:(fun k inv_depth ->
             Printf.eprintf "\t\t[%d/%d] inv_depth=%d ... \n" (k+1) (List.length inv_depth_list) inv_depth;
             Out_channel.flush stderr;
             let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ()) ) in
+            let eds = Generator.pow 2 (depth - inv_depth) in
+            (* let t_list = (List.map ~f:(fun v -> Some v) [0; eds/10; eds/2])@[None] in *)
+            let t_list = (List.map ~f:(fun v -> Some v) [eds/10; eds/2]) in
             List.iteri ~f:(fun l t ->
               Printf.eprintf "\t\t\t[%d/%d] threshold=%d ... " (l+1) (List.length t_list) (Option.value t ~default:(-1));
               Out_channel.flush stderr;
@@ -41,6 +43,12 @@ let _ =
                   quota
                   Core_bench.Verbosity.Quiet
                   ?threshold:t
+                  (* (fun ?threshold cache gamma term ->
+                    let res = IncrementalFunAlgorithm.typing_w_report ((Generator.pow 2 depth) - 1) ?threshold:threshold cache gamma term in
+                    Printf.printf "%s\n" (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report);
+                    Out_channel.flush stdout;
+                    res
+                  ) *)
                   IncrementalFunAlgorithm.typing
                   Generator.ibop_sim_change
                   inv_depth

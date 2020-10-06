@@ -131,7 +131,7 @@ struct
             | Some thresh -> _typing (fun c e1 e2 -> if c () then e1 () else e2 ()) cache gamma t
             | None -> _typing (fun _ _ e2 -> e2 ()) cache gamma t
 
-    let typing_w_report ?threshold nc (cache : (L.context ref * L.res) Cache.t) gamma t =
+    let typing_w_report nc ?threshold (cache : (L.context ref * L.res) Cache.t) gamma t =
         let rec _typing (threshold_fn : (unit -> bool) -> (unit -> L.res) -> (unit -> L.res) -> L.res) (cache : (L.context ref * L.res) Cache.t) gamma (t : (int * VarSet.t) L.term) (at : (IncrementalReport.node_visit_type ref) L.term) =
             let miss (cache : (L.context ref * L.res) Cache.t) hash gamma annot_at =
                 (match Cache.find cache hash with
@@ -172,7 +172,7 @@ struct
                             res)) in
             threshold_fn
                 (fun () -> report.cache_miss_inc + report.cache_hit >= Option.value_exn threshold)
-                (fun () -> Printf.eprintf "orig: %d %d\n" report.cache_miss_none report.cache_miss_inc; Out_channel.flush stderr; orig_call ())
+                orig_call
                 inc_call
         in
             IncrementalReport.reset report;

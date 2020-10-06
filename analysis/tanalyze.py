@@ -27,12 +27,11 @@ def tabulate(res, interesting_pairs):
         id_res_orig = res[
             (res["name"].str.startswith(orig_n)) &
             (res["nodecount"] == 2**depth - 1) &
-            (res["fvc"] == fvc) &
-            (res["threshold"] == -1)].drop(["invalidation_parameter", "name", "fvc" ,"threshold"], axis=1).groupby("nodecount").mean().reset_index()
+            (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc", "threshold"], axis=1).groupby("nodecount").mean().reset_index()
         id_res_einc = res[
             (res["name"].str.startswith(einc_n)) &
             (res["nodecount"] == 2**depth - 1) &
-            (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc"], axis=1).groupby(["nodecount", "threshold"]).mean().reset_index()
+            (res["fvc"] == fvc)].drop(["invalidation_parameter", "name", "fvc", "threshold"], axis=1).groupby(["nodecount"]).mean().reset_index()
 
         if len(id_res_orig.index) == 1:
             orig_r, einc_r = id_res_orig.iloc[0]["rate"], id_res_einc.iloc[0]["rate"]
