@@ -41,13 +41,13 @@ let _ =
                   quota
                   Core_bench.Verbosity.Quiet
                   ?threshold:t
-                  (fun ?threshold cache gamma term ->
+                  (* (fun ?threshold cache gamma term ->
                     let res = IncrementalFunAlgorithm.typing_w_report (Generator.nodecount e) ?threshold:threshold cache gamma term in
                     Printf.printf "%s\n" (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report);
                     Out_channel.flush stdout;
                     res
-                  )
-                  (* IncrementalFunAlgorithm.typing *)
+                  ) *)
+                  IncrementalFunAlgorithm.typing
                   Generator.ibop_sim_change
                   inv_depth
                   fv_c
