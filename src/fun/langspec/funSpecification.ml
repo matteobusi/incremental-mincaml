@@ -35,7 +35,7 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Array of 'a term * 'a term * ('a [@hash.ignore])
         | Get of 'a term * 'a term * ('a [@hash.ignore])
         | Put of 'a term * 'a term * 'a term * 'a [@@deriving hash]
-    and 'a fundef = { name : string * res; args : (string * res) list; body : 'a term }
+    and 'a fundef = { name : string * res; args : (string * res) list; body : 'a term } [@@deriving hash]
 
     type context = res FunContext.t
 
@@ -203,8 +203,8 @@ module FunSpecification (* : LanguageSpecification *) = struct
                 VarSet.union (compute_fv e3) (VarSet.union (compute_fv e1) (compute_fv e2))
 
 
-    let compute_hash = [%hash: (unit term)]
-    (* let rec compute_hash e = Hashtbl.hash_param max_int max_int e *)
+    (* May need tweeking in case of hash collisions *)
+    let compute_hash = Hash.run ~seed:42 [%hash_fold: unit term]
 
 
     let get_sorted_children e =
@@ -233,6 +233,9 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Put(e1, e2, e3, _) -> [(0, e1); (1, e2); (2, e3)]
 
     let compat gamma gamma' at =
+        let s = string_of_term (fun _ _ -> ()) at in
+        Printf.eprintf "Compat: %s - %d\n" (String.slice s 0 (Int.min 80 (String.length s))) (fst (term_getannot at));
+        Out_channel.flush stderr;
         (* Straightorward implementation from the theory: *)
         let fv = snd (term_getannot at) in
             VarSet.for_all fv ~f:(fun v -> FunContext.find gamma v = FunContext.find gamma' v)

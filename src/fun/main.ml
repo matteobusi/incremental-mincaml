@@ -220,7 +220,42 @@ let analyze_expr (file : string) (filem : string) =
             Printf.printf "done\n"
         | _ -> ())
 
+(* let analyze_generated depth fv_c inv_depth =
+    let e = Generator.ibop_gen_ast depth "+" fv_c in
+    Printf.printf "Initial typing environment "; Out_channel.flush stdout;
+    let initial_gamma_list e = (List.map ~f:(fun id -> (id, TInt)) (VarSet.elements (snd (FunSpecification.FunSpecification.term_getannot e)))) in
+    let gamma_init = (FunContext.add_list (initial_gamma_list e) (FunContext.get_empty_context ())) in
+    Printf.printf "... done\n"; Out_channel.flush stdout;
+    Printf.printf "Building the cache "; Out_channel.flush stdout;
+    let cache = IncrementalFunAlgorithm.get_empty_cache () in
+    ignore (IncrementalFunAlgorithm.build_cache e gamma_init cache);
+    Printf.printf "... done\n"; Out_channel.flush stdout;
+    (* IncrementalFunAlgorithm.IncrementalReport.reset IncrementalFunAlgorithm.report;
+    IncrementalFunAlgorithm.IncrementalReport.set_nc (nodecount em_hf) IncrementalFunAlgorithm.report; *)
+    Printf.printf "Original typing "; Out_channel.flush stdout;
+    let te = OriginalFunAlgorithm.typing gamma_init e in
+    Printf.printf "... done\n"; Out_channel.flush stdout;
+    Printf.printf "Simulating changes "; Out_channel.flush stdout;
+    ignore (Generator.ibop_sim_change cache e inv_depth);
+    Printf.printf "... done\n"; Out_channel.flush stdout;
+    Out_channel.flush stdout;
+    Printf.printf "Incremental typing "; Out_channel.flush stdout;
+    let tem = IncrementalFunAlgorithm.typing_w_report (nodecount e) cache gamma_init e in
+      Printf.printf "... done\n"; Out_channel.flush stdout;
+      Printf.printf "Type: %s - IType: %s\n" (FunSpecification.FunSpecification.string_of_type te) (FunSpecification.FunSpecification.string_of_type tem);
+      Printf.printf "%s\n" (IncrementalFunAlgorithm.IncrementalReport.string_of_report IncrementalFunAlgorithm.report);
+      (match IncrementalFunAlgorithm.report.annot_t with
+        | Some at ->
+          let file = Stdlib.open_out_bin "incremental_visual.dot" in
+            Printf.printf "Printing graphical tree report ... ";
+            Dot.output_graph file (mk_graph 0 at G.empty);
+            Printf.printf "done\n"
+        | _ -> ()) *)
+
+
 let _ =
+  (* let depth, fv_c, inv_depth = int_of_string Sys.argv.(1), int_of_string Sys.argv.(2), int_of_string Sys.argv.(3) in
+    analyze_generated depth fv_c inv_depth *)
     if Array.length Sys.argv = 3 then
         begin
             analyze_expr Sys.argv.(1) Sys.argv.(2);
