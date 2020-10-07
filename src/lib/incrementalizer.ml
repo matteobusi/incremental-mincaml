@@ -148,11 +148,6 @@ struct
             let orig_call () = (let r = OriginalFunAlgorithm.typing gamma t in
                     IncrementalReport.register_orig_call report;
                     (L.term_getannot at) := IncrementalReport.Orig;
-                    (if hash = 119809083 then
-                        let s = L.string_of_term (fun _ _ -> ()) at in
-                        Printf.eprintf "AO: %s\n" (String.slice s 0 (Int.min 80 (String.length s)));
-                        Out_channel.flush stderr
-                    else ());
                     Cache.set cache hash (ref gamma, r); r)
                 in
             let inc_call () =
@@ -173,11 +168,6 @@ struct
                                     List.iter rs ~f:(fun r -> Printf.printf "child res: %s\n" (L.string_of_type r));
                                     failwith "Incremental CheckJoin failed!"
                                 | Some res ->
-                                    (if hash = 119809083 then
-                                        let s = L.string_of_term (fun _ _ -> ()) at in
-                                        Printf.eprintf "ACJ: %s\n" (String.slice s 0 (Int.min 80 (String.length s)));
-                                        Out_channel.flush stderr
-                                    else ());
                                     Cache.set cache hash (ref gamma, res); res))
                         | Some res ->
                             res)) in

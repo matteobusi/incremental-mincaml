@@ -233,9 +233,6 @@ module FunSpecification (* : LanguageSpecification *) = struct
         | Put(e1, e2, e3, _) -> [(0, e1); (1, e2); (2, e3)]
 
     let compat gamma gamma' at =
-        let s = string_of_term (fun _ _ -> ()) at in
-        Printf.eprintf "Compat: %s - %d\n" (String.slice s 0 (Int.min 80 (String.length s))) (fst (term_getannot at));
-        Out_channel.flush stderr;
         (* Straightorward implementation from the theory: *)
         let fv = snd (term_getannot at) in
             VarSet.for_all fv ~f:(fun v -> FunContext.find gamma v = FunContext.find gamma' v)
