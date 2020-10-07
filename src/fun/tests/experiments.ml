@@ -122,6 +122,7 @@ let throughput_original_vs_inc
   gamma_init
   e =
     let nc = Generator.nodecount e in
+    let cc_cnt_ref = ref 0 in
     (* Just compute the cache once: *)
     let experiment_cache = IncrementalFunAlgorithm.get_empty_cache () in
       ignore (IncrementalFunAlgorithm.build_cache e gamma_init experiment_cache);
@@ -140,7 +141,7 @@ let throughput_original_vs_inc
           ]
         )
           @[Stest.create ~name:(inc_n ^ ":" ^ (string_of_int invalidator_param))
-          (fun () -> IncrementalFunAlgorithm.Cache.copy experiment_cache)
+          (fun () -> cc_cnt_ref := 0; IncrementalFunAlgorithm.Cache.copy experiment_cache)
           (fun cache ->
             incremental_typing_fun ?threshold:threshold cache gamma_init e)]) in
       let results = List.map ~f:(fun m -> Analysis.analyze m Analysis_config.default) measures in

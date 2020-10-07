@@ -41,7 +41,7 @@ def tabulate(res, interesting_pairs):
             else:
                 print("${}$ & $2^{{{}}}$ & ${:.2f}$ & ${:.2f}$ & ${:.2f}$\\\\".format(depth, fvc.bit_length() - 1, orig_r, einc_r, ratio))
 
-def plot_on_pdf (filename, res, interesting_pairs):
+def plot_on_pdf (filename, res):
     for nodecount in res["nodecount"].unique():
         res_2 = res[res["nodecount"] == nodecount]
         for fvc in res_2["fvc"].unique():
@@ -69,7 +69,7 @@ def plot_on_pdf (filename, res, interesting_pairs):
                 add_res_inc["invalidation_parameter"] = np.log2(nodecount+1) - add_res_inc["invalidation_parameter"]
 
                 for t in add_res_inc["threshold"].unique():
-                    if t != -1 and t in [] and ((np.log2(nodecount+1), fvc) in interesting_pairs):
+                    if t != -1: # and ((np.log2(nodecount+1), fvc) in interesting_pairs):
                         add_res_inc[add_res_inc["threshold"] == t].drop(["threshold"], axis=1).plot(x="invalidation_parameter", y="rate", ax=ax, marker='+', label=inc_n + " (T = " + str(t) + ")", linewidth=1, linestyle='dotted') #
 
                 add_res_orig.plot(x="invalidation_parameter", y="rate", ax=ax, marker='*', linewidth=1, color="blue", label=orig_n, linestyle='dashed') # BLUE
@@ -123,4 +123,4 @@ if __name__ == "__main__":
         tabulate(res, [(14,1), (14, 2**7), (14, 2**9), (14, 2**11), (14, 2**13)])
         tabulate(res, [(12,1), (12, 2**7), (12, 2**9), (12, 2**11)])
 
-        plot_on_pdf("{}/".format(sys.argv[2]) + "tres_{}_{}.pdf", res, [(16, 2**15), (14, 2**13), (12, 2**11)])
+        plot_on_pdf("{}/".format(sys.argv[2]) + "tres_{}_{}.pdf", res)
