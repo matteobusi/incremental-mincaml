@@ -40,7 +40,7 @@ $ make texperiments
 
 To build the executable running the experiments on the unrolled factorial, run:
 ```
-$ make texperiments
+$ make dexperiments
 ```
 
 To build the memory experiments, run:
@@ -116,7 +116,7 @@ It creates a new folder `tplots` with all the generated plots and a csv file wit
 
 Similarly, for the unrolled factorial experiments it suffices to compile `dexperiments` and then to run:
 ```
-$ ./texperiments.native 10 8 12 4 10 > dresults-10-8-12-4-10.csv; python analysis/danalyze.py dresults-10-8-12-4-10.csv dplots/
+$ ../dexperiments.native 10 8 12 4 10 > dresults-10-8-12-4-10.csv; python analysis/danalyze.py dresults-10-8-12-4-10.csv dplots/
 ```
 It creates a new folder `dplots` with all the generated plots and a csv file with the raw results.
 
