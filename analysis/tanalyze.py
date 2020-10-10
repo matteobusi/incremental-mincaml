@@ -68,12 +68,12 @@ def plot_on_pdf (filename, res):
                 add_res_orig["invalidation_parameter"] = np.log2(nodecount+1) - add_res_orig["invalidation_parameter"]
                 add_res_inc["invalidation_parameter"] = np.log2(nodecount+1) - add_res_inc["invalidation_parameter"]
 
+                add_res_orig.plot(x="invalidation_parameter", y="rate", ax=ax, marker='*', linewidth=1, color="blue", label=orig_n, linestyle='dashed') # BLUE
+                add_res_inc[add_res_inc["threshold"] == -1].drop(["threshold"], axis=1).plot(x="invalidation_parameter", y="rate", ax=ax, marker='d', label=inc_n, color="orange", linewidth=1) # ORANGE
+
                 for t in add_res_inc["threshold"].unique():
                     if t != -1: # and ((np.log2(nodecount+1), fvc) in interesting_pairs):
                         add_res_inc[add_res_inc["threshold"] == t].drop(["threshold"], axis=1).plot(x="invalidation_parameter", y="rate", ax=ax, marker='+', label=inc_n + " (T = " + str(t) + ")", linewidth=1, linestyle='dotted') #
-
-                add_res_orig.plot(x="invalidation_parameter", y="rate", ax=ax, marker='*', linewidth=1, color="blue", label=orig_n, linestyle='dashed') # BLUE
-                add_res_inc[add_res_inc["threshold"] == -1].drop(["threshold"], axis=1).plot(x="invalidation_parameter", y="rate", ax=ax, marker='d', label=inc_n, color="orange", linewidth=1) # ORANGE
 
                 ymax = max (
                     [
@@ -93,7 +93,7 @@ def plot_on_pdf (filename, res):
                 plt.xlabel("$\log ($ size of the diff sub-tree $ + 1)$")
                 plt.ylabel("throughput (re-typings/$s$)")
 
-                plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0.)
+                plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2, mode="expand", borderaxespad=0.)
 
                 pdf.savefig()
                 plt.close()
