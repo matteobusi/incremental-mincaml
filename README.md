@@ -10,7 +10,7 @@ As an example we also provide the standard and incremental type checker for MinC
 The project requires:
 
 - [OCaml = 4.07.1](http://www.ocaml.org/) standard compilers and tools
-- [OUnit2 = 2.2.2](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library.
+- [OUnit2 = 2.2.3](http://ounit.forge.ocamlcore.org/) OCaml Unit testing library.
 - [Core = v0.12.4](https://github.com/janestreet/core) JaneStreet's alternative to OCaml's standard library.
 - [Core_bench = v0.12.0](https://github.com/janestreet/core_bench) OCaml library for micro-benchmarking.
 - [Landmarks = 1.3](https://github.com/LexiFi/landmarks) OCaml profiling library.
