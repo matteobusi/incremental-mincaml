@@ -1,7 +1,10 @@
 # README - Incremental Type Checking of MinCaml
 
-This project is a proof of concept implementing the incrementalization framework described in
-> [M. Busi, P. Degano and L. Galletta. Mechanical Incrementalization of Typing Algorithms](tba).
+This project is a proof of concept implementing the incrementalization framework described in the papers
+> M. Busi, P. Degano and L. Galletta. Mechanical Incrementalization of Typing Algorithms. (under review)
+
+A preliminary version of the framework appeared in
+> [M. Busi, P. Degano and L. Galletta. Using Standard Typing Algorithms Incrementally](https://arxiv.org/abs/1808.00225), NASA Formal Methods (NFM), 2019.
 
 As an example we also provide the standard and incremental type checker for MinCaml.
 
